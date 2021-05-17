@@ -3,11 +3,16 @@ import random
 from PySide2 import QtCore, QtWidgets, QtGui
 import numpy as np
 import math
+import moves
+import pyautogui
+
+
 # from termcolor import colored
 
 
 def printRed(text):
-    print("\033[91m {}\033[00m" .format(text))
+    print("\033[91m {}\033[00m".format(text))
+
 
 def printGreen(text):
     print("\033[92m {}\033[00m".format(text))
@@ -220,7 +225,7 @@ class TicTacToe(QtWidgets.QGraphicsItem):
             y = random.randint(0, len(self.board[x]) - 1)
 
         # print("Spawned tile of value " + str(value) + ", at: " + str(x) + ", " + str(y))
-        output="Spawned tile of value " + str(value) + ", at: " + str(x) + ", " + str(y)
+        output = "Spawned tile of value " + str(value) + ", at: " + str(x) + ", " + str(y)
         self.board[x][y].value = value
 
         # else:
@@ -410,50 +415,73 @@ class TicTacToe(QtWidgets.QGraphicsItem):
     #     self.update()
     #     super(TicTacToe, self).mousePressEvent(event)
 
+
 class PopupWindow(QtWidgets.QDialog):
-    def __init__(self,main):
+    def __init__(self, main, type):
         super(PopupWindow, self).__init__()
-        self.main_window=main
-        self.game()
+        self.main_window = main
+        if type == "&Opcje gry":
+            self.game()
+
+    def net(self):
+        pass
 
     def game(self):
-        board_size=QtWidgets.QLabel("Wybierz rozmiar planszy: ")
-        self.board_size_combobox=QtWidgets.QComboBox()
+        board_size = QtWidgets.QLabel("Wybierz rozmiar planszy: ")
+        self.board_size_combobox = QtWidgets.QComboBox()
         self.board_size_combobox.addItem('3')
         self.board_size_combobox.addItem('4')
         self.board_size_combobox.addItem('5')
         self.board_size_combobox.currentTextChanged.connect(self.main_window.change_size)
 
-        window_layout=QtWidgets.QVBoxLayout()
+        window_layout = QtWidgets.QVBoxLayout()
         window_layout.addWidget(board_size)
         window_layout.addWidget(self.board_size_combobox)
         self.setLayout(window_layout)
-        self.setGeometry(200,200,200,200)
+        self.setGeometry(200, 200, 400, 400)
         self.setWindowTitle("Ustawienia gry")
 
 
+class SaveHistory(QtWidgets.QFileDialog):
+    def __init__(self, main):
+        super(SaveHistory, self).__init__()
+        self.filename, _ = self.getSaveFileName(self, "Save game history", "history.txt", "Text file (*.txt)")
+        file = open(self.filename, 'w')
+        text = main.historia.toPlainText()
+        file.write(text)
+        file.close()
+        # self.mode=self.setFileMode(QtWidgets.QFileDialog.AnyFile)
+        # self.show()
+
+class MessageB(QtWidgets.QMessageBox):
+    def __init__(self,main):
+        super(MessageB, self).__init__()
+        self.setText("Czy na pewno chcesz zamknąć?")
+        self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+        self.setStandardButtons(QtWidgets.QMessageBox.Ok|QtWidgets.QMessageBox.Cancel)
+        self.setDefaultButton(QtWidgets.QMessageBox.Cancel)
+        ret= self.exec_()
+
+        if ret == QtWidgets.QMessageBox.Cancel:
+            self.close()
+        else:
+            main.close()
 # coś jest chyba nie tak ze score
 class MainWindow(QtWidgets.QGraphicsView):
-    def __init__(self,n=3):
+    def __init__(self, n=3):
         super(MainWindow, self).__init__()
         self.scene = QtWidgets.QGraphicsScene(self)
         self._createActions()
         self._createMenuBar()
         # self._connectActions()
         self.option_menu.triggered[QtWidgets.QAction].connect(self.con)
-        # self.button=QtWidgets.QPushButton("ShowDialog")
-        # self.button.clicked.connect(self.newDialog())
-        # # self.button.
-        # scene.addWidget(self.button)
+        # self.menubar.triggered[QtWidgets.QAction].connect(self.menucon)
 
-
-        # scene.addWidget()
-        self.size=n
+        self.size = n
 
         # rozmiar planszy
         # plansza gracza 1
         self.tic_tac_toe = TicTacToe(int(self.size), 250, 100)
-
 
         # QTextEdit z historią
         self.historia = QtWidgets.QTextEdit()
@@ -461,10 +489,10 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.historia.setGeometry(0, 600, 400, 200)
 
         # wylosowanie mu na początku 2 płytek
-        spawn=self.tic_tac_toe.spawnTile()
+        spawn = self.tic_tac_toe.spawnTile()
         print(spawn)
         self.historia.append(spawn)
-        spawn=self.tic_tac_toe.spawnTile()
+        spawn = self.tic_tac_toe.spawnTile()
         print(spawn)
         self.historia.append(spawn)
         # gracz sieciowy
@@ -506,359 +534,367 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.setScene(self.scene)
         self.setCacheMode(QtWidgets.QGraphicsView.CacheBackground)
         # self.setWindowTitle("2048 Hexagons are TheBestagons")
-    def change_size(self,q):
-        if q =="4":
-            self.size=4
-        if q=="3":
-            self.size=3
-        if q=="5":
-            self.size=5
+
+        self.Q = QtWidgets.QPushButton("&Q", self)
+        self.Q.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Q))
+        self.Q.setGeometry(550, 670, 30, 30)
+        self.Q.clicked.connect(self.moveq)
+
+        self.A = QtWidgets.QPushButton("&A", self)
+        self.A.setGeometry(550, 720, 30, 30)
+        self.A.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_A))
+        self.A.clicked.connect(self.movea)
+
+        self.W = QtWidgets.QPushButton("&W", self)
+        self.W.setGeometry(600, 650, 30, 30)
+        self.W.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_W))
+        self.W.clicked.connect(self.movew)
+
+        self.E = QtWidgets.QPushButton("&E", self)
+        self.E.setGeometry(650, 670, 30, 30)
+        self.E.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_E))
+        self.E.clicked.connect(self.movee)
+
+        self.D = QtWidgets.QPushButton("&D", self)
+        self.D.setGeometry(650, 720, 30, 30)
+        self.D.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_D))
+        self.D.clicked.connect(self.moved)
+
+        self.S = QtWidgets.QPushButton("&S", self)
+        self.S.setGeometry(600, 750, 30, 30)
+        self.S.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_S))
+        self.S.clicked.connect(self.moves)
+
+        przyciski = QtWidgets.QGraphicsSimpleTextItem()
+        przyciski.setText("Buttons")
+        przyciski.setX(500)
+        przyciski.setY(760)
+        przyciski.setFont(font)
+        self.scene.addItem(przyciski)
+
+    def change_size(self, q):
+        if q == "4":
+            self.size = 4
+        if q == "3":
+            self.size = 3
+        if q == "5":
+            self.size = 5
         self.tic_tac_toe.hide()
         self.gracz_sieciowy.hide()
+        self.historia.clear()
         del self.tic_tac_toe
         del self.gracz_sieciowy
+        printRed("Zmieniono rozmiar planszy na: " + str(self.size))
 
         # self.scene.update()
-        self.tic_tac_toe= TicTacToe(int(self.size), 250, 100)
-        self.gracz_sieciowy=TicTacToe(int(self.size),800,100)
+        self.tic_tac_toe = TicTacToe(int(self.size), 250, 100)
+        spawn = self.tic_tac_toe.spawnTile()
+        print(spawn)
+        self.historia.append(spawn)
+        spawn = self.tic_tac_toe.spawnTile()
+        print(spawn)
+        self.historia.append(spawn)
+        self.gracz_sieciowy = TicTacToe(int(self.size), 800, 100)
         # self.scene.update()
         self.scene.addItem(self.tic_tac_toe)
         self.scene.addItem(self.gracz_sieciowy)
         self.scene.update()
 
+    def menucon(self, q):
+        if q.text() == "&Cut":
+            self.historia.append("CUT menucon")
 
-    def con(self,q):
-        if q.text()=="&Opcje gry":
-            self.pop=PopupWindow(self)
+    def con(self, q):
+        if q.text() == "&Opcje gry":
+            self.pop = PopupWindow(self, q.text())
             self.pop.show()
-            self.historia.append("POPUP")
+            # self.historia.append("POPUP")
+        if q.text() == "&Zapisz historie":
+            self.dialog = SaveHistory(self)
+            # self.dialog.show()
+        if q.text() == "&Wyjdz":
+            self.koniec=MessageB(self)
+            # self.koniec.show()
+            print("Koniec")
+
     def _createMenuBar(self):
         self.menubar = QtWidgets.QMenuBar(self)
         self.option_menu = self.menubar.addMenu('&Opcje')
         self.option_menu.addAction(self.newAction)
-        self.option_menu.addAction(self.openAction)
+        self.option_menu.addAction(self.netAction)
+        self.option_menu.addAction(self.saveConfigAction)
+        self.option_menu.addAction(self.saveHistoryAction)
+        self.option_menu.addAction(self.loadAction)
+        self.option_menu.addAction(self.exitAction)
         # Using a QMenu object
-        fileMenu = QtWidgets.QMenu("&File", self)
-        self.menubar.addMenu(fileMenu)
+        # fileMenu = QtWidgets.QMenu("&Exit", self)
+        # self.menubar.addMenu(fileMenu)
+        # self.menubar.addAction(self.cutAction)
         # Using a title
         editMenu = self.menubar.addMenu("&Edit")
+
     def _createActions(self):
         # Creating action using the first constructor
         self.newAction = QtWidgets.QAction(self)
         self.newAction.setText("&Opcje gry")
         # Creating actions using the second constructor
-        self.openAction = QtWidgets.QAction("&Open...", self)
-        self.saveAction = QtWidgets.QAction("&Save", self)
-        self.exitAction = QtWidgets.QAction("&Exit", self)
+        self.netAction = QtWidgets.QAction("&Opcje sieciowe", self)
+        self.saveHistoryAction = QtWidgets.QAction("&Zapisz historie", self)
+        self.saveConfigAction = QtWidgets.QAction("&Zapisz konfiguracje", self)
+        self.loadAction = QtWidgets.QAction("&Emuluj", self)
+        self.exitAction = QtWidgets.QAction("&Wyjdz", self)
         self.copyAction = QtWidgets.QAction("&Copy", self)
         self.pasteAction = QtWidgets.QAction("&Paste", self)
-        self.cutAction = QtWidgets.QAction("C&ut", self)
+        self.cutAction = QtWidgets.QAction("&Cut", self)
         self.helpContentAction = QtWidgets.QAction("&Help Content", self)
         self.aboutAction = QtWidgets.QAction("&About", self)
-    def newDialog(self):
-        self.opcjeDialog=QtWidgets.QDialog()
-        self.opcjeDialog.show()
 
-
-    def keyPressEvent(self, event):
-        key = event.key()
-        # 3-2
-        # 4-2
-        # 5-3
+    def movea(self):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
-        if key == QtCore.Qt.Key_R:
-            self.tic_tac_toe.reset()
-        if key == QtCore.Qt.Key_1:
-            spawn=self.tic_tac_toe.spawnTile()
-            print(spawn)
-        if key == QtCore.Qt.Key_2:
-            spawn=self.gracz_sieciowy.spawnTile()
-            print(spawn)
-        if key == QtCore.Qt.Key_A:
+
+        self.tic_tac_toe.moves(direction="left_down")
+        changed = self.tic_tac_toe.merge(direction="left_down")
+        while replays > 0 and changed == True:
             self.tic_tac_toe.moves(direction="left_down")
             changed = self.tic_tac_toe.merge(direction="left_down")
-            while replays > 0 and changed == True:
-                self.tic_tac_toe.moves(direction="left_down")
-                changed = self.tic_tac_toe.merge(direction="left_down")
-                replays -= 1
+            replays -= 1
 
+        printRed("Moved all tiles left_down")
+        self.historia.append("Move direction = left_down")
 
-            printRed("Moved all tiles left_down")
-            self.historia.append("Move direction = left_down")
+        printGreen("Score = " + str(self.tic_tac_toe.score))
+        self.historia.append("Score = " + str(self.tic_tac_toe.score))
+        self.labelScore.setText(str(self.tic_tac_toe.score))
 
-            printGreen("Score = " + str(self.tic_tac_toe.score))
-            self.historia.append("Score = " + str(self.tic_tac_toe.score))
-            self.labelScore.setText(str(self.tic_tac_toe.score))
+        spawn = self.tic_tac_toe.spawnTile()
+        print(spawn)
+        self.historia.append(spawn)
 
-            spawn=self.tic_tac_toe.spawnTile()
-            print(spawn)
-            self.historia.append(spawn)
-
-        if key == QtCore.Qt.Key_E:
-            self.tic_tac_toe.moves(direction="right_up")
-            changed = self.tic_tac_toe.merge(direction="right_up")
-            while replays > 0 and changed == True:
-                self.tic_tac_toe.moves(direction="right_up")
-                changed = self.tic_tac_toe.merge(direction="right_up")
-                replays -= 1
-
-
-            printRed("Moved all tiles right_up")
-            self.historia.append("Move direction = right_up")
-
-            printGreen("Score = " + str(self.tic_tac_toe.score))
-            self.labelScore.setText(str(self.tic_tac_toe.score))
-            self.historia.append("Score = " + str(self.tic_tac_toe.score))
-
-            spawn=self.tic_tac_toe.spawnTile()
-            print(spawn)
-            self.historia.append(spawn)
-
-        if key == QtCore.Qt.Key_S:
-            self.tic_tac_toe.moves(direction="down")
-            changed = self.tic_tac_toe.merge(direction="down")
-            while replays > 0 and changed == True:
-                self.tic_tac_toe.moves(direction="down")
-                changed = self.tic_tac_toe.merge(direction="down")
-                replays -= 1
-
-
-            printRed("Moved all tiles down")
-            self.historia.append("Move direction = down")
-
-            printGreen("Score = " + str(self.tic_tac_toe.score))
-            self.labelScore.setText(str(self.tic_tac_toe.score))
-            self.historia.append("Score = " + str(self.tic_tac_toe.score))
-
-            spawn=self.tic_tac_toe.spawnTile()
-            print(spawn)
-            self.historia.append(spawn)
-
-        if key == QtCore.Qt.Key_W:
-            self.tic_tac_toe.moves(direction="up")
-            changed = self.tic_tac_toe.merge(direction="up")
-            while replays > 0 and changed == True:
-                self.tic_tac_toe.moves(direction="up")
-                changed = self.tic_tac_toe.merge(direction="up")
-                replays -= 1
-
-
-            printRed("Moved all tiles up")
-            self.historia.append("Move direction = up")
-
-            printGreen("Score = " + str(self.tic_tac_toe.score))
-            self.labelScore.setText(str(self.tic_tac_toe.score))
-            self.historia.append("Score = " + str(self.tic_tac_toe.score))
-
-            spawn=self.tic_tac_toe.spawnTile()
-            print(spawn)
-            self.historia.append(spawn)
-
-        if key == QtCore.Qt.Key_Q:
+    def moveq(self):
+        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
+        self.tic_tac_toe.moves(direction="left_up")
+        changed = self.tic_tac_toe.merge(direction="left_up")
+        while replays > 0 and changed == True:
             self.tic_tac_toe.moves(direction="left_up")
             changed = self.tic_tac_toe.merge(direction="left_up")
-            while replays > 0 and changed == True:
-                self.tic_tac_toe.moves(direction="left_up")
-                changed = self.tic_tac_toe.merge(direction="left_up")
-                replays -= 1
+            replays -= 1
 
+        printRed("Moved all tiles left_up")
+        self.historia.append("Move direction = left_up")
 
-            printRed("Moved all tiles left_up")
-            self.historia.append("Move direction = left_up")
+        printGreen("Score = " + str(self.tic_tac_toe.score))
+        self.labelScore.setText(str(self.tic_tac_toe.score))
+        self.historia.append("Score = " + str(self.tic_tac_toe.score))
 
-            printGreen("Score = " + str(self.tic_tac_toe.score))
-            self.labelScore.setText(str(self.tic_tac_toe.score))
-            self.historia.append(str(self.tic_tac_toe.score))
+        spawn = self.tic_tac_toe.spawnTile()
+        print(spawn)
+        self.historia.append(spawn)
 
-            spawn=self.tic_tac_toe.spawnTile()
-            print(spawn)
-            self.historia.append(spawn)
+    def movew(self):
+        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
+        self.tic_tac_toe.moves(direction="up")
+        changed = self.tic_tac_toe.merge(direction="up")
+        while replays > 0 and changed == True:
+            self.tic_tac_toe.moves(direction="up")
+            changed = self.tic_tac_toe.merge(direction="up")
+            replays -= 1
 
-        if key == QtCore.Qt.Key_D:
+        printRed("Moved all tiles up")
+        self.historia.append("Move direction = up")
+
+        printGreen("Score = " + str(self.tic_tac_toe.score))
+        self.labelScore.setText(str(self.tic_tac_toe.score))
+        self.historia.append("Score = " + str(self.tic_tac_toe.score))
+
+        spawn = self.tic_tac_toe.spawnTile()
+        print(spawn)
+        self.historia.append(spawn)
+
+    def movee(self):
+
+        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
+        self.tic_tac_toe.moves(direction="right_up")
+        changed = self.tic_tac_toe.merge(direction="right_up")
+        while replays > 0 and changed == True:
+            self.tic_tac_toe.moves(direction="right_up")
+            changed = self.tic_tac_toe.merge(direction="right_up")
+            replays -= 1
+
+        printRed("Moved all tiles right_up")
+        self.historia.append("Move direction = right_up")
+
+        printGreen("Score = " + str(self.tic_tac_toe.score))
+        self.labelScore.setText(str(self.tic_tac_toe.score))
+        self.historia.append("Score = " + str(self.tic_tac_toe.score))
+
+        spawn = self.tic_tac_toe.spawnTile()
+        print(spawn)
+        self.historia.append(spawn)
+
+    def moves(self):
+        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
+        self.tic_tac_toe.moves(direction="down")
+        changed = self.tic_tac_toe.merge(direction="down")
+        while replays > 0 and changed == True:
+            self.tic_tac_toe.moves(direction="down")
+            changed = self.tic_tac_toe.merge(direction="down")
+            replays -= 1
+
+        printRed("Moved all tiles down")
+        self.historia.append("Move direction = down")
+
+        printGreen("Score = " + str(self.tic_tac_toe.score))
+        self.labelScore.setText(str(self.tic_tac_toe.score))
+        self.historia.append("Score = " + str(self.tic_tac_toe.score))
+
+        spawn = self.tic_tac_toe.spawnTile()
+        print(spawn)
+        self.historia.append(spawn)
+
+    def moved(self):
+        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
+        self.tic_tac_toe.moves(direction="right_down")
+        changed = self.tic_tac_toe.merge(direction="right_down")
+        while replays > 0 and changed == True:
             self.tic_tac_toe.moves(direction="right_down")
             changed = self.tic_tac_toe.merge(direction="right_down")
-            while replays > 0 and changed == True:
-                self.tic_tac_toe.moves(direction="right_down")
-                changed = self.tic_tac_toe.merge(direction="right_down")
-                replays -= 1
+            replays -= 1
 
-            printRed("Moved all tiles right_down")
-            self.historia.append("Move direction = right_down")
+        printRed("Moved all tiles right_down")
+        self.historia.append("Move direction = right_down")
 
-            printGreen("Score = " + str(self.tic_tac_toe.score))
-            self.labelScore.setText(str(self.tic_tac_toe.score))
-            self.historia.append(str(self.tic_tac_toe.score))
+        printGreen("Score = " + str(self.tic_tac_toe.score))
+        self.labelScore.setText(str(self.tic_tac_toe.score))
+        self.historia.append("Score = " + str(self.tic_tac_toe.score))
 
-            spawn=self.tic_tac_toe.spawnTile()
-            print(spawn)
-            self.historia.append(spawn)
+        spawn = self.tic_tac_toe.spawnTile()
+        print(spawn)
+        self.historia.append(spawn)
 
-        super(MainWindow, self).keyPressEvent(event)
+    # def keyPressEvent(self, event):
+    #     key = event.key()
+    #     # 3-2
+    #     # 4-2
+    #     # 5-3
+    #     replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
+    #     if key == QtCore.Qt.Key_R:
+    #         self.tic_tac_toe.reset()
+    #     if key == QtCore.Qt.Key_1:
+    #         spawn=self.tic_tac_toe.spawnTile()
+    #         print(spawn)
+    #     if key == QtCore.Qt.Key_2:
+    #         spawn=self.gracz_sieciowy.spawnTile()
+    #         print(spawn)
+    #     # if key == QtCore.Qt.Key_A:
+    #     #     # self.movea("A")
+    #
+    #     if key == QtCore.Qt.Key_E:
+    #         self.tic_tac_toe.moves(direction="right_up")
+    #         changed = self.tic_tac_toe.merge(direction="right_up")
+    #         while replays > 0 and changed == True:
+    #             self.tic_tac_toe.moves(direction="right_up")
+    #             changed = self.tic_tac_toe.merge(direction="right_up")
+    #             replays -= 1
+    #
+    #
+    #         printRed("Moved all tiles right_up")
+    #         self.historia.append("Move direction = right_up")
+    #
+    #         printGreen("Score = " + str(self.tic_tac_toe.score))
+    #         self.labelScore.setText(str(self.tic_tac_toe.score))
+    #         self.historia.append("Score = " + str(self.tic_tac_toe.score))
+    #
+    #         spawn=self.tic_tac_toe.spawnTile()
+    #         print(spawn)
+    #         self.historia.append(spawn)
+    #
+    #     if key == QtCore.Qt.Key_S:
+    #         self.tic_tac_toe.moves(direction="down")
+    #         changed = self.tic_tac_toe.merge(direction="down")
+    #         while replays > 0 and changed == True:
+    #             self.tic_tac_toe.moves(direction="down")
+    #             changed = self.tic_tac_toe.merge(direction="down")
+    #             replays -= 1
+    #
+    #
+    #         printRed("Moved all tiles down")
+    #         self.historia.append("Move direction = down")
+    #
+    #         printGreen("Score = " + str(self.tic_tac_toe.score))
+    #         self.labelScore.setText(str(self.tic_tac_toe.score))
+    #         self.historia.append("Score = " + str(self.tic_tac_toe.score))
+    #
+    #         spawn=self.tic_tac_toe.spawnTile()
+    #         print(spawn)
+    #         self.historia.append(spawn)
+    #
+    #     if key == QtCore.Qt.Key_W:
+    #         self.tic_tac_toe.moves(direction="up")
+    #         changed = self.tic_tac_toe.merge(direction="up")
+    #         while replays > 0 and changed == True:
+    #             self.tic_tac_toe.moves(direction="up")
+    #             changed = self.tic_tac_toe.merge(direction="up")
+    #             replays -= 1
+    #
+    #
+    #         printRed("Moved all tiles up")
+    #         self.historia.append("Move direction = up")
+    #
+    #         printGreen("Score = " + str(self.tic_tac_toe.score))
+    #         self.labelScore.setText(str(self.tic_tac_toe.score))
+    #         self.historia.append("Score = " + str(self.tic_tac_toe.score))
+    #
+    #         spawn=self.tic_tac_toe.spawnTile()
+    #         print(spawn)
+    #         self.historia.append(spawn)
+    #
+    #     if key == QtCore.Qt.Key_Q:
+    #         self.tic_tac_toe.moves(direction="left_up")
+    #         changed = self.tic_tac_toe.merge(direction="left_up")
+    #         while replays > 0 and changed == True:
+    #             self.tic_tac_toe.moves(direction="left_up")
+    #             changed = self.tic_tac_toe.merge(direction="left_up")
+    #             replays -= 1
+    #
+    #
+    #         printRed("Moved all tiles left_up")
+    #         self.historia.append("Move direction = left_up")
+    #
+    #         printGreen("Score = " + str(self.tic_tac_toe.score))
+    #         self.labelScore.setText(str(self.tic_tac_toe.score))
+    #         self.historia.append(str(self.tic_tac_toe.score))
+    #
+    #         spawn=self.tic_tac_toe.spawnTile()
+    #         print(spawn)
+    #         self.historia.append(spawn)
+    #
+    #     if key == QtCore.Qt.Key_D:
+    #         self.tic_tac_toe.moves(direction="right_down")
+    #         changed = self.tic_tac_toe.merge(direction="right_down")
+    #         while replays > 0 and changed == True:
+    #             self.tic_tac_toe.moves(direction="right_down")
+    #             changed = self.tic_tac_toe.merge(direction="right_down")
+    #             replays -= 1
+    #
+    #         printRed("Moved all tiles right_down")
+    #         self.historia.append("Move direction = right_down")
+    #
+    #         printGreen("Score = " + str(self.tic_tac_toe.score))
+    #         self.labelScore.setText(str(self.tic_tac_toe.score))
+    #         self.historia.append(str(self.tic_tac_toe.score))
+    #
+    #         spawn=self.tic_tac_toe.spawnTile()
+    #         print(spawn)
+    #         self.historia.append(spawn)
+    #
+    #     super(MainWindow, self).keyPressEvent(event)
 
 
-# class Window(QtWidgets.QMainWindow):
-#     def __init__(self, parent=None):
-#         super().__init__(parent)
-#         self.resize(1500, 700)
-#         self.setWindowTitle("HALO")
-#
-#         self._createMenuBar()
-#         # self.set
-#         self.view=QtWidgets.QGraphicsView()
-#         scene = QtWidgets.QGraphicsScene(self)
-#         scene.setSceneRect(0,0,1500,700)
-#         # rozmiar planszy
-#         n = 3
-#         # plansza gracza 1
-#         self.tic_tac_toe = TicTacToe(n, 250, 150)
-#         # wylosowanie mu na początku 2 płytek
-#         self.tic_tac_toe.spawnTile()
-#         self.tic_tac_toe.spawnTile()
-#         # gracz sieciowy
-#         self.gracz_sieciowy = TicTacToe(n, 700, 150)
-#
-#         # label z wynikiem gracza 1
-#         self.labelA = QtWidgets.QGraphicsSimpleTextItem()
-#         self.labelA.setText("Player A Score: ")
-#         font = QtGui.QFont("Helvetica", 15, QtGui.QFont.Bold)
-#         self.labelA.setFont(font)
-#         scene.addItem(self.labelA)
-#         self.labelScore = QtWidgets.QGraphicsSimpleTextItem()
-#         self.labelScore.setText(str(self.tic_tac_toe.score))
-#         self.labelScore.setX(180)
-#         self.labelScore.setFont(font)
-#
-#         # label z wynikiem gracza sieciowego
-#         self.labelWeb = QtWidgets.QGraphicsSimpleTextItem()
-#         self.labelWeb.setText("Web Player Score: ")
-#         self.labelWeb.setFont(font)
-#         self.labelWeb.setX(500)
-#         scene.addItem(self.labelWeb)
-#         self.labelWebScore = QtWidgets.QGraphicsSimpleTextItem()
-#         self.labelWebScore.setText(str(self.gracz_sieciowy.score))
-#         self.labelWebScore.setX(710)
-#         self.labelWebScore.setFont(font)
-#
-#         # QTextEdit z historią
-#         self.historia=QtWidgets.QTextEdit()
-#         self.historia.setReadOnly(True)
-#         self.historia.setGeometry(0,500,400,200)
-#
-#         # dodawanie elementów do sceny
-#         scene.addWidget(self.historia)
-#         scene.addItem(self.labelScore)
-#         scene.addItem(self.labelWebScore)
-#         scene.addItem(self.tic_tac_toe)
-#         scene.addItem(self.gracz_sieciowy)
-#         # scene.setSceneRect(0, 0, 1200, 700)
-#         self.view.setScene(scene)
-#         self.view.show()
-#         # self.view.setCacheMode(QtWidgets.QGraphicsView.CacheBackground)
-#         # scene = QtWidgets.QGraphicsScene(self)
-#         # scene.addItem(self.view.labelA)
-#         # scene.addWidget(self.view.historia)
-#         # scene.addItem(self.view.labelScore)
-#         # scene.addItem(self.view.labelWebScore)
-#         # scene.addItem(self.view.tic_tac_toe)
-#         # scene.addItem(self.view.gracz_sieciowy)
-#
-#         # self.view.show()
-#
-#     def _createMenuBar(self):
-#         menuBar=QtWidgets.QMenuBar(self)
-#
-#         fileMenu=QtWidgets.QMenu("&File",self)
-#         menuBar.addMenu(fileMenu)
-#
-#         editMenu = menuBar.addMenu("&Edit")
-#         helpMenu = menuBar.addMenu("&Help")
-#
-#         self.setMenuBar(menuBar)
-#     def keyPressEvent(self, event):
-#         key = event.key()
-#         # 3-2
-#         # 4-2
-#         # 5-3
-#         replays=self.tic_tac_toe.size-self.tic_tac_toe.size//2
-#         if key == QtCore.Qt.Key_R:
-#             self.tic_tac_toe.reset()
-#         if key == QtCore.Qt.Key_1:
-#             self.tic_tac_toe.spawnTile()
-#         if key == QtCore.Qt.Key_2:
-#             self.gracz_sieciowy.spawnTile()
-#         if key == QtCore.Qt.Key_A:
-#             self.tic_tac_toe.moves(direction="left_down")
-#             changed=self.tic_tac_toe.merge(direction="left_down")
-#             while replays > 0 and changed==True:
-#                 self.tic_tac_toe.moves(direction="left_down")
-#                 changed=self.tic_tac_toe.merge(direction="left_down")
-#                 replays-=1
-#             print("Moved all tiles left_down")
-#             self.historia.append("Score = "+str(self.tic_tac_toe.score))
-#             print("Score = "+str(self.tic_tac_toe.score))
-#             self.labelScore.setText(str(self.tic_tac_toe.score))
-#             self.tic_tac_toe.spawnTile()
-#         if key == QtCore.Qt.Key_E:
-#             self.tic_tac_toe.moves(direction="right_up")
-#             changed=self.tic_tac_toe.merge(direction="right_up")
-#             while replays > 0 and changed == True:
-#                 self.tic_tac_toe.moves(direction="right_up")
-#                 changed = self.tic_tac_toe.merge(direction="right_up")
-#                 replays -= 1
-#             print("Moved all tiles right_up")
-#             print("Score = " + str(self.tic_tac_toe.score))
-#             self.labelScore.setText(str(self.tic_tac_toe.score))
-#             self.tic_tac_toe.spawnTile()
-#         if key == QtCore.Qt.Key_S:
-#             self.tic_tac_toe.moves(direction="down")
-#             changed=self.tic_tac_toe.merge(direction="down")
-#             while replays > 0 and changed == True:
-#                 self.tic_tac_toe.moves(direction="down")
-#                 changed = self.tic_tac_toe.merge(direction="down")
-#                 replays -= 1
-#             print("Moved all tiles down")
-#             print("Score = " + str(self.tic_tac_toe.score))
-#             self.labelScore.setText(str(self.tic_tac_toe.score))
-#             self.tic_tac_toe.spawnTile()
-#         if key == QtCore.Qt.Key_W:
-#             self.tic_tac_toe.moves(direction="up")
-#             changed=self.tic_tac_toe.merge(direction="up")
-#             while replays > 0 and changed == True:
-#                 self.tic_tac_toe.moves(direction="up")
-#                 changed = self.tic_tac_toe.merge(direction="up")
-#                 replays -= 1
-#             print("Moved all tiles up")
-#             print("Score = " + str(self.tic_tac_toe.score))
-#             self.labelScore.setText(str(self.tic_tac_toe.score))
-#             self.tic_tac_toe.spawnTile()
-#         if key == QtCore.Qt.Key_Q:
-#             self.tic_tac_toe.moves(direction="left_up")
-#             changed=self.tic_tac_toe.merge(direction="left_up")
-#             while replays > 0 and changed == True:
-#                 self.tic_tac_toe.moves(direction="left_up")
-#                 changed = self.tic_tac_toe.merge(direction="left_up")
-#                 replays -= 1
-#             print("Moved all tiles left_up")
-#             print("Score = " + str(self.tic_tac_toe.score))
-#             self.labelScore.setText(str(self.tic_tac_toe.score))
-#             self.tic_tac_toe.spawnTile()
-#         if key == QtCore.Qt.Key_D:
-#             self.tic_tac_toe.moves(direction="right_down")
-#             changed=self.tic_tac_toe.merge(direction="right_down")
-#             while replays > 0 and changed == True:
-#                 self.tic_tac_toe.moves(direction="right_down")
-#                 changed = self.tic_tac_toe.merge(direction="right_down")
-#                 replays -= 1
-#             print("Moved all tiles right_down")
-#             print("Score = " + str(self.tic_tac_toe.score))
-#             self.labelScore.setText(str(self.tic_tac_toe.score))
-#             self.tic_tac_toe.spawnTile()
-#         super(Window, self).keyPressEvent(event)
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
 
     window = MainWindow()
-    window.setGeometry(200,200,1350,900)
+    window.setGeometry(100, 100, 1350, 900)
     window.show()
     # window.show()
     # mainWindow = MainWindow()
