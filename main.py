@@ -402,45 +402,63 @@ class TicTacToe(QtWidgets.QGraphicsItem):
     def boundingRect(self):
         return QtCore.QRectF(0, 0, 1200, 700)
 
+    def __del__(self):
+        print("Destructor called")
     # def mousePressEvent(self, event):
     #     pos = event.pos()
     #     self.select(int(pos.x() / 100), int(pos.y() / 100))
     #     self.update()
     #     super(TicTacToe, self).mousePressEvent(event)
 
-class PopupWindow(QtWidgets.QGraphicsView):
-    def __init__(self):
+class PopupWindow(QtWidgets.QDialog):
+    def __init__(self,main):
         super(PopupWindow, self).__init__()
-        dlg=QtWidgets.QDialog(self)
-        dlg.setWindowTitle("HIII")
-        dlg.exec()
+        self.main_window=main
+        self.game()
+
+    def game(self):
+        board_size=QtWidgets.QLabel("Wybierz rozmiar planszy: ")
+        self.board_size_combobox=QtWidgets.QComboBox()
+        self.board_size_combobox.addItem('3')
+        self.board_size_combobox.addItem('4')
+        self.board_size_combobox.addItem('5')
+        self.board_size_combobox.currentTextChanged.connect(self.main_window.change_size)
+
+        window_layout=QtWidgets.QVBoxLayout()
+        window_layout.addWidget(board_size)
+        window_layout.addWidget(self.board_size_combobox)
+        self.setLayout(window_layout)
+        self.setGeometry(200,200,200,200)
+        self.setWindowTitle("Ustawienia gry")
 
 
 # coś jest chyba nie tak ze score
 class MainWindow(QtWidgets.QGraphicsView):
-    def __init__(self):
+    def __init__(self,n=3):
         super(MainWindow, self).__init__()
-        scene = QtWidgets.QGraphicsScene(self)
+        self.scene = QtWidgets.QGraphicsScene(self)
         self._createActions()
         self._createMenuBar()
         # self._connectActions()
-        self.button=QtWidgets.QPushButton("ShowDialog")
-        self.button.clicked.connect(self.newDialog())
-        # self.button.
-        scene.addWidget(self.button)
+        self.option_menu.triggered[QtWidgets.QAction].connect(self.con)
+        # self.button=QtWidgets.QPushButton("ShowDialog")
+        # self.button.clicked.connect(self.newDialog())
+        # # self.button.
+        # scene.addWidget(self.button)
 
 
         # scene.addWidget()
+        self.size=n
 
         # rozmiar planszy
-        n = 3
         # plansza gracza 1
-        self.tic_tac_toe = TicTacToe(n, 250, 150)
+        self.tic_tac_toe = TicTacToe(int(self.size), 250, 100)
+
 
         # QTextEdit z historią
         self.historia = QtWidgets.QTextEdit()
         self.historia.setReadOnly(True)
-        self.historia.setGeometry(0, 500, 400, 200)
+        self.historia.setGeometry(0, 600, 400, 200)
 
         # wylosowanie mu na początku 2 płytek
         spawn=self.tic_tac_toe.spawnTile()
@@ -450,7 +468,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         print(spawn)
         self.historia.append(spawn)
         # gracz sieciowy
-        self.gracz_sieciowy = TicTacToe(n, 700, 150)
+        self.gracz_sieciowy = TicTacToe(n, 800, 100)
 
         # label z wynikiem gracza 1
         self.labelA = QtWidgets.QGraphicsSimpleTextItem()
@@ -458,7 +476,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.labelA.setY(20)
         font = QtGui.QFont("Helvetica", 15, QtGui.QFont.Bold)
         self.labelA.setFont(font)
-        scene.addItem(self.labelA)
+        self.scene.addItem(self.labelA)
         self.labelScore = QtWidgets.QGraphicsSimpleTextItem()
         self.labelScore.setText(str(self.tic_tac_toe.score))
         self.labelScore.setX(180)
@@ -471,7 +489,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.labelWeb.setFont(font)
         self.labelWeb.setX(500)
         self.labelWeb.setY(20)
-        scene.addItem(self.labelWeb)
+        self.scene.addItem(self.labelWeb)
         self.labelWebScore = QtWidgets.QGraphicsSimpleTextItem()
         self.labelWebScore.setText(str(self.gracz_sieciowy.score))
         self.labelWebScore.setX(710)
@@ -479,28 +497,55 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.labelWebScore.setFont(font)
 
         # dodawanie elementów do sceny
-        scene.addWidget(self.historia)
-        scene.addItem(self.labelScore)
-        scene.addItem(self.labelWebScore)
-        scene.addItem(self.tic_tac_toe)
-        scene.addItem(self.gracz_sieciowy)
+        self.scene.addWidget(self.historia)
+        self.scene.addItem(self.labelScore)
+        self.scene.addItem(self.labelWebScore)
+        self.scene.addItem(self.tic_tac_toe)
+        self.scene.addItem(self.gracz_sieciowy)
         # scene.setSceneRect(0, 0, 1200, 700)
-        self.setScene(scene)
+        self.setScene(self.scene)
         self.setCacheMode(QtWidgets.QGraphicsView.CacheBackground)
         # self.setWindowTitle("2048 Hexagons are TheBestagons")
+    def change_size(self,q):
+        if q =="4":
+            self.size=4
+        if q=="3":
+            self.size=3
+        if q=="5":
+            self.size=5
+        self.tic_tac_toe.hide()
+        self.gracz_sieciowy.hide()
+        del self.tic_tac_toe
+        del self.gracz_sieciowy
+
+        # self.scene.update()
+        self.tic_tac_toe= TicTacToe(int(self.size), 250, 100)
+        self.gracz_sieciowy=TicTacToe(int(self.size),800,100)
+        # self.scene.update()
+        self.scene.addItem(self.tic_tac_toe)
+        self.scene.addItem(self.gracz_sieciowy)
+        self.scene.update()
+
+
+    def con(self,q):
+        if q.text()=="&Opcje gry":
+            self.pop=PopupWindow(self)
+            self.pop.show()
+            self.historia.append("POPUP")
     def _createMenuBar(self):
-        menubar = QtWidgets.QMenuBar(self)
-        option_menu = menubar.addMenu('&Opcje')
-        option_menu.addAction(self.newAction)
+        self.menubar = QtWidgets.QMenuBar(self)
+        self.option_menu = self.menubar.addMenu('&Opcje')
+        self.option_menu.addAction(self.newAction)
+        self.option_menu.addAction(self.openAction)
         # Using a QMenu object
         fileMenu = QtWidgets.QMenu("&File", self)
-        menubar.addMenu(fileMenu)
+        self.menubar.addMenu(fileMenu)
         # Using a title
-        editMenu = menubar.addMenu("&Edit")
+        editMenu = self.menubar.addMenu("&Edit")
     def _createActions(self):
         # Creating action using the first constructor
         self.newAction = QtWidgets.QAction(self)
-        self.newAction.setText("&New")
+        self.newAction.setText("&Opcje gry")
         # Creating actions using the second constructor
         self.openAction = QtWidgets.QAction("&Open...", self)
         self.saveAction = QtWidgets.QAction("&Save", self)
@@ -513,8 +558,7 @@ class MainWindow(QtWidgets.QGraphicsView):
     def newDialog(self):
         self.opcjeDialog=QtWidgets.QDialog()
         self.opcjeDialog.show()
-    def _connectActions(self):
-        self.newAction.connect(self.newDialog())
+
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -814,6 +858,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication([])
 
     window = MainWindow()
+    window.setGeometry(200,200,1350,900)
     window.show()
     # window.show()
     # mainWindow = MainWindow()
