@@ -3,12 +3,24 @@ import random
 from PySide2 import QtCore, QtWidgets, QtGui
 import numpy as np
 import math
-import moves
-import pyautogui
+import xml.etree.ElementTree as et
 
-
-# from termcolor import colored
-
+# funkcja edytująca nam xml
+def change_xml(ham_probab, spam_probab):
+    tree = et.parse('./spam/dict.xml')
+    root = tree.getroot()
+    # wpisujemy wszystkie prawdopodobienstwa ham, do elementów drzewa
+    for el in ham_probab:
+        data = et.Element("word", {"type": "ham", "probability": str(round(ham_probab[el],4))})
+        data.text = str(el)
+        root.append(data)
+     # wpisujemy wszystkie prawdopodobienstwa spam, do elementów drzewa
+    for el in spam_probab:
+        data = et.Element("word", {"type": "spam", "probability": str(round(spam_probab[el],4))})
+        data.text = str(el)
+        root.append(data)
+    #     zappisujemy plik
+    tree.write('output.xml', xml_declaration=True, encoding='utf-8')
 
 def printRed(text):
     print("\033[91m {}\033[00m".format(text))
@@ -172,6 +184,10 @@ class TicTacToe(QtWidgets.QGraphicsItem):
                     painter.setBrush(QtGui.QColor(237, 204, 98, 200))
                 if self.board[j][i].value == 512:
                     painter.setBrush(QtGui.QColor(237, 201, 80, 200))
+                if self.board[j][i].value == 1024:
+                    painter.setBrush(QtGui.QColor(237, 197,  63, 200))
+                if self.board[j][i].value == 2048:
+                    painter.setBrush(QtGui.QColor(237, 194,  46, 200))
                 if j / self.size < 1:
                     self.board[j][i].x_center = (
                             (x + j * 1.5 * (self.board[j][i].size)) - (i * 1.5 * (self.board[j][i].size)))
@@ -442,30 +458,132 @@ class PopupWindow(QtWidgets.QDialog):
         self.setWindowTitle("Ustawienia gry")
 
 
+# możliwe że tu w zaleznosci od systemu trzeba bedzie zczytywać odpowiednio
 class SaveHistory(QtWidgets.QFileDialog):
-    def __init__(self, main):
+    def __init__(self, main,type):
         super(SaveHistory, self).__init__()
-        self.filename, _ = self.getSaveFileName(self, "Save game history", "history.txt", "Text file (*.txt)")
-        file = open(self.filename, 'w')
-        text = main.historia.toPlainText()
-        file.write(text)
-        file.close()
-        # self.mode=self.setFileMode(QtWidgets.QFileDialog.AnyFile)
-        # self.show()
-
+        if type=="History":
+            self.filename, _ = self.getSaveFileName(self, "Save game history", "history.txt", "Text file (*.txt)")
+            try:
+                file = open(self.filename, 'w')
+                text = main.historia.toPlainText()
+                file.write(text)
+                file.close()
+            except:
+                print("Nie zapisano historii gry!")
+                out=MessageB(self,"History")
+            # self.mode=self.setFileMode(QtWidgets.QFileDialog.AnyFile)
+            # self.show()
+        if type=="Config":
+            self.filename, _ = self.getSaveFileName(self, "Save game configuration", "config.json", "JSON File (*.json)")
+            try:
+                file = open(self.filename, 'w')
+                text = main.historia.toPlainText()
+                file.write(text)
+                file.close()
+            except:
+                print("Nie zapisano konfiguracji gry!")
+                out=MessageB(self,"Config")
+            # self.mode=self.setFileMode(QtWidgets.QFileDialog.AnyFile)
+            # self.show()
+        if type=="Emulate":
+            self.filename, _ = self.getOpenFileNames(self, "Select a xml file with game history to emulate",
+                                                 "/home",
+                                                 "Images (*.png *.xpm *.jpg)")
+            try:
+                file = open(self.filename, 'r')
+                text=file.read()
+                lsit_of_words=text.split()
+                file.close()
+            except:
+                print("Nie otworzono pliku xml do emulowania!")
+                out=MessageB(self,"Emulate")
 class MessageB(QtWidgets.QMessageBox):
-    def __init__(self,main):
+    def __init__(self,main,type):
         super(MessageB, self).__init__()
-        self.setText("Czy na pewno chcesz zamknąć?")
-        self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
-        self.setStandardButtons(QtWidgets.QMessageBox.Ok|QtWidgets.QMessageBox.Cancel)
-        self.setDefaultButton(QtWidgets.QMessageBox.Cancel)
-        ret= self.exec_()
+        if type=="Exit":
+            self.setText("Czy na pewno chcesz zamknąć?")
+            self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok|QtWidgets.QMessageBox.Cancel)
+            self.setDefaultButton(QtWidgets.QMessageBox.Cancel)
+            ret= self.exec_()
 
-        if ret == QtWidgets.QMessageBox.Cancel:
-            self.close()
-        else:
-            main.close()
+            if ret == QtWidgets.QMessageBox.Cancel:
+                self.close()
+            else:
+                main.close()
+        if type=="Nowa":
+            self.setText("Czy na pewno chcesz uruchomić grę na nowo?")
+            # self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+            self.setDefaultButton(QtWidgets.QMessageBox.Cancel)
+            ret = self.exec_()
+
+            if ret == QtWidgets.QMessageBox.Cancel:
+                self.close()
+            else:
+                # dodac resetowanie score'a
+                main.tic_tac_toe.hide()
+                main.gracz_sieciowy.hide()
+                main.historia.clear()
+
+                del main.tic_tac_toe
+                main.tic_tac_toe=TicTacToe(int(main.size), 250, 100)
+
+                spawn = main.tic_tac_toe.spawnTile()
+                print(spawn)
+                main.historia.append(spawn)
+
+                spawn = main.tic_tac_toe.spawnTile()
+                print(spawn)
+                main.historia.append(spawn)
+
+                del main.gracz_sieciowy
+                main.gracz_sieciowy=TicTacToe(int(main.size), 800, 100)
+
+                main.scene.addItem(main.tic_tac_toe)
+                main.scene.addItem(main.gracz_sieciowy)
+                main.scene.update()
+        if type=="History":
+            self.setText("NIE ZAPISANO HISTORII GRY!")
+            # self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            self.setDefaultButton(QtWidgets.QMessageBox.Ok)
+            ret = self.exec_()
+
+            if ret == QtWidgets.QMessageBox.Cancel:
+                self.close()
+
+        if type=="Config":
+            self.setText("NIE ZAPISANO KONFIGURACJI GRY!")
+            # self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            self.setDefaultButton(QtWidgets.QMessageBox.Ok)
+            ret = self.exec_()
+
+            if ret == QtWidgets.QMessageBox.Cancel:
+                self.close()
+        if type=="Emulate":
+            self.setText("NIE OTWORZONO PLIKU DO EMULOWANIA!")
+            # self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            self.setDefaultButton(QtWidgets.QMessageBox.Ok)
+            ret = self.exec_()
+
+            if ret == QtWidgets.QMessageBox.Cancel:
+                self.close()
+
+        if type=="Autoplay":
+            self.setText("Tutaj bedzie sie automatycznie rozgrywać gra")
+            # self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            self.setDefaultButton(QtWidgets.QMessageBox.Ok)
+            ret = self.exec_()
+
+            if ret == QtWidgets.QMessageBox.Cancel:
+                self.close()
+
+
 # coś jest chyba nie tak ze score
 class MainWindow(QtWidgets.QGraphicsView):
     def __init__(self, n=3):
@@ -487,6 +605,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.historia = QtWidgets.QTextEdit()
         self.historia.setReadOnly(True)
         self.historia.setGeometry(0, 600, 400, 200)
+
 
         # wylosowanie mu na początku 2 płytek
         spawn = self.tic_tac_toe.spawnTile()
@@ -534,6 +653,30 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.setScene(self.scene)
         self.setCacheMode(QtWidgets.QGraphicsView.CacheBackground)
         # self.setWindowTitle("2048 Hexagons are TheBestagons")
+
+        self.newGameButton=QtWidgets.QPushButton("New Game", self)
+        self.newGameButton.setGeometry(750, 700, 80, 50)
+        self.newGameButton.clicked.connect(self.newGame)
+
+        self.exitGameButton=QtWidgets.QPushButton("Exit", self)
+        self.exitGameButton.setGeometry(750, 750, 80, 50)
+        self.exitGameButton.clicked.connect(self.exitGame)
+
+        self.saveGameHistoryButton = QtWidgets.QPushButton("Save History", self)
+        self.saveGameHistoryButton.setGeometry(850, 700, 80, 50)
+        self.saveGameHistoryButton.clicked.connect(self.saveHistory)
+
+        self.saveConfigButton = QtWidgets.QPushButton("Save \n Configuration", self)
+        self.saveConfigButton.setGeometry(850, 750, 80, 50)
+        self.saveConfigButton.clicked.connect(self.saveConfig)
+
+        self.autoPlayButton = QtWidgets.QPushButton("Auto Play", self)
+        self.autoPlayButton.setGeometry(950, 700, 80, 50)
+        self.autoPlayButton.clicked.connect(self.autoPlay)
+
+        self.emulateButton = QtWidgets.QPushButton("Emulate", self)
+        self.emulateButton.setGeometry(950, 750, 80, 50)
+        self.emulateButton.clicked.connect(self.emulate)
 
         self.Q = QtWidgets.QPushButton("&Q", self)
         self.Q.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Q))
@@ -586,7 +729,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         del self.gracz_sieciowy
         printRed("Zmieniono rozmiar planszy na: " + str(self.size))
 
-        # self.scene.update()
+        # dodac resetowanie score'a
         self.tic_tac_toe = TicTacToe(int(self.size), 250, 100)
         spawn = self.tic_tac_toe.spawnTile()
         print(spawn)
@@ -595,36 +738,60 @@ class MainWindow(QtWidgets.QGraphicsView):
         print(spawn)
         self.historia.append(spawn)
         self.gracz_sieciowy = TicTacToe(int(self.size), 800, 100)
-        # self.scene.update()
         self.scene.addItem(self.tic_tac_toe)
         self.scene.addItem(self.gracz_sieciowy)
         self.scene.update()
 
-    def menucon(self, q):
-        if q.text() == "&Cut":
-            self.historia.append("CUT menucon")
+    def newGame(self):
+        self.messbox = MessageB(self, "Nowa")
+        # self.koniec.show()
+        print("Nowa Gra")
+    def exitGame(self):
+        self.messbox = MessageB(self, "Exit")
+        # self.koniec.show()
+        print("Koniec")
 
+    def saveHistory(self):
+        self.dialog = SaveHistory(self,"History")
+    def saveConfig(self):
+        self.dialog = SaveHistory(self,"Config")
+
+    def autoPlay(self):
+        self.messbox=MessageB(self,"Autoplay")
+    def emulate(self):
+        self.dialog=SaveHistory(self,"Emulate")
+    #     read xml
+    # do moves
+        pass
     def con(self, q):
+        if q.text()=="&Nowa gra":
+            self.newGame()
         if q.text() == "&Opcje gry":
             self.pop = PopupWindow(self, q.text())
             self.pop.show()
             # self.historia.append("POPUP")
         if q.text() == "&Zapisz historie":
-            self.dialog = SaveHistory(self)
+            self.saveHistory()
             # self.dialog.show()
         if q.text() == "&Wyjdz":
-            self.koniec=MessageB(self)
-            # self.koniec.show()
-            print("Koniec")
+            self.exitGame()
+        if q.text() =="&Auto rozgrywka":
+            self.autoPlay()
+        if q.text() == "&Zapisz konfiguracje":
+            self.saveConfig()
+        if q.text() =="&Emuluj":
+            self.emulate()
 
     def _createMenuBar(self):
         self.menubar = QtWidgets.QMenuBar(self)
         self.option_menu = self.menubar.addMenu('&Opcje')
+        self.option_menu.addAction(self.newGameAction)
         self.option_menu.addAction(self.newAction)
         self.option_menu.addAction(self.netAction)
         self.option_menu.addAction(self.saveConfigAction)
         self.option_menu.addAction(self.saveHistoryAction)
         self.option_menu.addAction(self.loadAction)
+        self.option_menu.addAction(self.autoplayAction)
         self.option_menu.addAction(self.exitAction)
         # Using a QMenu object
         # fileMenu = QtWidgets.QMenu("&Exit", self)
@@ -638,12 +805,13 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.newAction = QtWidgets.QAction(self)
         self.newAction.setText("&Opcje gry")
         # Creating actions using the second constructor
+        self.newGameAction = QtWidgets.QAction("&Nowa gra", self)
         self.netAction = QtWidgets.QAction("&Opcje sieciowe", self)
         self.saveHistoryAction = QtWidgets.QAction("&Zapisz historie", self)
         self.saveConfigAction = QtWidgets.QAction("&Zapisz konfiguracje", self)
         self.loadAction = QtWidgets.QAction("&Emuluj", self)
         self.exitAction = QtWidgets.QAction("&Wyjdz", self)
-        self.copyAction = QtWidgets.QAction("&Copy", self)
+        self.autoplayAction = QtWidgets.QAction("&Auto rozgrywka", self)
         self.pasteAction = QtWidgets.QAction("&Paste", self)
         self.cutAction = QtWidgets.QAction("&Cut", self)
         self.helpContentAction = QtWidgets.QAction("&Help Content", self)
