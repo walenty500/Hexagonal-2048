@@ -4,23 +4,66 @@ from PySide2 import QtCore, QtWidgets, QtGui
 import numpy as np
 import math
 import xml.etree.ElementTree as et
+import os
+
+def read_xml(filename="przykladowy.xml",main=object):
+    tree = et.parse(filename)
+    root = tree.getroot()
+
+    size=root.attrib["board_size"]
+
+    main.change_size(size,xml=True)
+
+    for child in root:
+        # if child.attrib["nr"]==1:
+            for leaf in child:
+                if leaf.tag=="spawn_value":
+                    x=int(leaf.attrib["x"][:-1])
+                    y=int(leaf.attrib["y"])
+                    value=int(leaf.text[:-1])
+                    spawn = main.tic_tac_toe.spawnTile(x,y,value)
+                    print(spawn)
+                # print(leaf.tag, leaf.attrib, leaf.text)
 
 # funkcja edytująca nam xml
-def change_xml(ham_probab, spam_probab):
-    tree = et.parse('./spam/dict.xml')
-    root = tree.getroot()
-    # wpisujemy wszystkie prawdopodobienstwa ham, do elementów drzewa
-    for el in ham_probab:
-        data = et.Element("word", {"type": "ham", "probability": str(round(ham_probab[el],4))})
-        data.text = str(el)
-        root.append(data)
-     # wpisujemy wszystkie prawdopodobienstwa spam, do elementów drzewa
-    for el in spam_probab:
-        data = et.Element("word", {"type": "spam", "probability": str(round(spam_probab[el],4))})
-        data.text = str(el)
-        root.append(data)
-    #     zappisujemy plik
-    tree.write('output.xml', xml_declaration=True, encoding='utf-8')
+def create_xml(filename="przykladowy.xml",size=3,history=[]):
+    # tree = et.parse('./spam/dict.xml')
+    root = et.Element("hex2048",{"board_size":str(size)})#.getroot()
+
+    player1=et.Element("player",{"nr":"1"})
+    root.append(player1)
+
+    player2=et.Element("player",{"nr":"2"})
+    root.append(player2)
+
+    for el in history:
+        if el[0]=="Spawned":
+            tmp=et.SubElement(player1,"spawn_value",{"x":str(el[6]),"y":str(el[7])})
+            tmp.text=str(el[4])
+        if el[0]=="Move":
+            tmp=et.SubElement(player1,"move")
+            tmp.text = str(el[-1])
+        if el[0]=="Score":
+            tmp = et.SubElement(player1, "score")
+            tmp.text = str(el[-1])
+    # if filename[:-4]!=".xml":
+    #     output=filename+".xml"
+    # else:
+    output=filename
+    tree = et.ElementTree(root)
+    tree.write(output, xml_declaration=True, encoding='utf-8')
+    # # wpisujemy wszystkie prawdopodobienstwa ham, do elementów drzewa
+    # for el in ham_probab:
+    #     data = et.Element("word", {"type": "ham", "probability": str(round(ham_probab[el],4))})
+    #     data.text = str(el)
+    #     root.append(data)
+    #  # wpisujemy wszystkie prawdopodobienstwa spam, do elementów drzewa
+    # for el in spam_probab:
+    #     data = et.Element("word", {"type": "spam", "probability": str(round(spam_probab[el],4))})
+    #     data.text = str(el)
+    #     root.append(data)
+    # #     zappisujemy plik
+    # tree.write('output.xml', xml_declaration=True, encoding='utf-8')
 
 def printRed(text):
     print("\033[91m {}\033[00m".format(text))
@@ -225,20 +268,29 @@ class TicTacToe(QtWidgets.QGraphicsItem):
     #     painter.setBrush(QtGui.QColor((237, 224, 200,200)))
     #     hex.paint(painter, option, widget,coord_x,coord_y)
 
-    def spawnTile(self):
-        x = random.randint(0, 2 * self.size - 2)
-        y = random.randint(0, len(self.board[x]) - 1)
-        tile_val_int = random.randint(0, 100)
-        value = 2
-        if tile_val_int < 80:
-            value = 2
-        else:
-            value = 4
-        # if(self.board[x])
-        # hex=Hexagon()
-        while (self.board[x][y].value != 0):
+    def spawnTile(self,x_in=-1,y_in=-1,val=0):
+        if x_in==-1 and y_in==-1:
             x = random.randint(0, 2 * self.size - 2)
             y = random.randint(0, len(self.board[x]) - 1)
+
+        tile_val_int = random.randint(0, 100)
+        # value = 2
+        if val==0:
+            if tile_val_int < 80:
+                value = 2
+            else:
+                value = 4
+        else:
+            value=val
+        # if(self.board[x])
+        # hex=Hexagon()
+        if x_in==-1 and y_in==-1:
+            while (self.board[x][y].value != 0):
+                x = random.randint(0, 2 * self.size - 2)
+                y = random.randint(0, len(self.board[x]) - 1)
+        else:
+            x=x_in
+            y=y_in
 
         # print("Spawned tile of value " + str(value) + ", at: " + str(x) + ", " + str(y))
         output = "Spawned tile of value " + str(value) + ", at: " + str(x) + ", " + str(y)
@@ -463,12 +515,18 @@ class SaveHistory(QtWidgets.QFileDialog):
     def __init__(self, main,type):
         super(SaveHistory, self).__init__()
         if type=="History":
-            self.filename, _ = self.getSaveFileName(self, "Save game history", "history.txt", "Text file (*.txt)")
+            self.filename, _ = self.getSaveFileName(self, "Save game history", "history.xml", "XML File (*.xml)")
             try:
-                file = open(self.filename, 'w')
+                # file = open(self.filename, 'w')
                 text = main.historia.toPlainText()
-                file.write(text)
-                file.close()
+                splited=text.splitlines()
+                splited_words=[]
+                for el in splited:
+                    tmp=el.split()
+                    splited_words.append(tmp)
+                create_xml(self.filename,main.size,splited_words)
+                # file.write(text)
+                # file.close()
             except:
                 print("Nie zapisano historii gry!")
                 out=MessageB(self,"History")
@@ -487,14 +545,10 @@ class SaveHistory(QtWidgets.QFileDialog):
             # self.mode=self.setFileMode(QtWidgets.QFileDialog.AnyFile)
             # self.show()
         if type=="Emulate":
-            self.filename, _ = self.getOpenFileNames(self, "Select a xml file with game history to emulate",
-                                                 "/home",
-                                                 "Images (*.png *.xpm *.jpg)")
+            self.filename, _ = self.getOpenFileNames(self, "Select a xml file with game history to emulate", "","XML Files (*.xml)")
             try:
-                file = open(self.filename, 'r')
-                text=file.read()
-                lsit_of_words=text.split()
-                file.close()
+                base=os.path.basename(self.filename[0])
+                read_xml(base,main)
             except:
                 print("Nie otworzono pliku xml do emulowania!")
                 out=MessageB(self,"Emulate")
@@ -606,7 +660,6 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.historia.setReadOnly(True)
         self.historia.setGeometry(0, 600, 400, 200)
 
-
         # wylosowanie mu na początku 2 płytek
         spawn = self.tic_tac_toe.spawnTile()
         print(spawn)
@@ -715,7 +768,9 @@ class MainWindow(QtWidgets.QGraphicsView):
         przyciski.setFont(font)
         self.scene.addItem(przyciski)
 
-    def change_size(self, q):
+
+
+    def change_size(self, q,xml=False):
         if q == "4":
             self.size = 4
         if q == "3":
@@ -731,12 +786,13 @@ class MainWindow(QtWidgets.QGraphicsView):
 
         # dodac resetowanie score'a
         self.tic_tac_toe = TicTacToe(int(self.size), 250, 100)
-        spawn = self.tic_tac_toe.spawnTile()
-        print(spawn)
-        self.historia.append(spawn)
-        spawn = self.tic_tac_toe.spawnTile()
-        print(spawn)
-        self.historia.append(spawn)
+        if xml==False:
+            spawn = self.tic_tac_toe.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
+            spawn = self.tic_tac_toe.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
         self.gracz_sieciowy = TicTacToe(int(self.size), 800, 100)
         self.scene.addItem(self.tic_tac_toe)
         self.scene.addItem(self.gracz_sieciowy)
@@ -939,20 +995,20 @@ class MainWindow(QtWidgets.QGraphicsView):
         print(spawn)
         self.historia.append(spawn)
 
-    # def keyPressEvent(self, event):
-    #     key = event.key()
-    #     # 3-2
-    #     # 4-2
-    #     # 5-3
-    #     replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
-    #     if key == QtCore.Qt.Key_R:
-    #         self.tic_tac_toe.reset()
-    #     if key == QtCore.Qt.Key_1:
-    #         spawn=self.tic_tac_toe.spawnTile()
-    #         print(spawn)
-    #     if key == QtCore.Qt.Key_2:
-    #         spawn=self.gracz_sieciowy.spawnTile()
-    #         print(spawn)
+    def keyPressEvent(self, event):
+        key = event.key()
+        # 3-2
+        # 4-2
+        # 5-3
+        if key == QtCore.Qt.Key_1:
+            spawn=self.tic_tac_toe.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
+        if key == QtCore.Qt.Key_2:
+            spawn=self.gracz_sieciowy.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
+        super(MainWindow, self).keyPressEvent(event)
     #     # if key == QtCore.Qt.Key_A:
     #     #     # self.movea("A")
     #
