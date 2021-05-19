@@ -5,7 +5,11 @@ import numpy as np
 import math
 import xml.etree.ElementTree as et
 import os
-import time
+import argparse
+import subprocess
+import socket
+import threading
+
 #
 # def iterate_xml(leaf,main=object):
 #     if leaf.tag == "spawn_value":
@@ -706,6 +710,18 @@ class MainWindow(QtWidgets.QGraphicsView):
     def __init__(self, n=3):
         super(MainWindow, self).__init__()
         self.scene = QtWidgets.QGraphicsScene(self)
+        self.host='127.0.0.1'
+        self.port = 8080
+        self.name="Player A"
+        self.sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.sock.connect((self.host,self.port))
+            self.role="Client"
+        except:
+            self.sock.bind((self.host, self.port))
+            self.role="Server"
+            self.sock.listen()
+        print(self.role)
         self._createActions()
         self._createMenuBar()
         # self._connectActions()
@@ -936,10 +952,10 @@ class MainWindow(QtWidgets.QGraphicsView):
             if el[0] == "Score":
                 tmp = et.SubElement(player1, "score")
                 tmp.text = str(el[-1])
-        # if filename[:-4]!=".xml":
-        #     output=filename+".xml"
-        # else:
-        output = filename
+        if filename[:-4]!=".xml":
+            output=filename+".xml"
+        else:
+            output = filename
         tree = et.ElementTree(root)
         tree.write(output, xml_declaration=True, encoding='utf-8')
 
@@ -975,6 +991,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.messbox = MessageB(self, "Nowa")
         # self.koniec.show()
         print("Nowa Gra")
+
     def exitGame(self):
         self.messbox = MessageB(self, "Exit")
         # self.koniec.show()
@@ -983,16 +1000,19 @@ class MainWindow(QtWidgets.QGraphicsView):
     def saveHistory(self):
         self.messbox=MessageB(self,"History Last Move")
         # self.dialog = SaveHistory(self,"History")
+
     def saveConfig(self):
         self.dialog = SaveHistory(self,"Config")
 
     def autoPlay(self):
         self.messbox=MessageB(self,"Autoplay")
+
     def emulate(self):
         self.dialog=SaveHistory(self,"Emulate")
     #     read xml
     # do moves
         pass
+
     def con(self, q):
         if q.text()=="&Nowa gra":
             self.newGame()
