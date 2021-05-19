@@ -5,53 +5,78 @@ import numpy as np
 import math
 import xml.etree.ElementTree as et
 import os
-
-def read_xml(filename="przykladowy.xml",main=object):
-    tree = et.parse(filename)
-    root = tree.getroot()
-
-    size=root.attrib["board_size"]
-
-    main.change_size(size,xml=True)
-
-    for child in root:
-        # if child.attrib["nr"]==1:
-            for leaf in child:
-                if leaf.tag=="spawn_value":
-                    x=int(leaf.attrib["x"][:-1])
-                    y=int(leaf.attrib["y"])
-                    value=int(leaf.text[:-1])
-                    spawn = main.tic_tac_toe.spawnTile(x,y,value)
-                    print(spawn)
-                # print(leaf.tag, leaf.attrib, leaf.text)
-
-# funkcja edytująca nam xml
-def create_xml(filename="przykladowy.xml",size=3,history=[]):
-    # tree = et.parse('./spam/dict.xml')
-    root = et.Element("hex2048",{"board_size":str(size)})#.getroot()
-
-    player1=et.Element("player",{"nr":"1"})
-    root.append(player1)
-
-    player2=et.Element("player",{"nr":"2"})
-    root.append(player2)
-
-    for el in history:
-        if el[0]=="Spawned":
-            tmp=et.SubElement(player1,"spawn_value",{"x":str(el[6]),"y":str(el[7])})
-            tmp.text=str(el[4])
-        if el[0]=="Move":
-            tmp=et.SubElement(player1,"move")
-            tmp.text = str(el[-1])
-        if el[0]=="Score":
-            tmp = et.SubElement(player1, "score")
-            tmp.text = str(el[-1])
-    # if filename[:-4]!=".xml":
-    #     output=filename+".xml"
-    # else:
-    output=filename
-    tree = et.ElementTree(root)
-    tree.write(output, xml_declaration=True, encoding='utf-8')
+import time
+#
+# def iterate_xml(leaf,main=object):
+#     if leaf.tag == "spawn_value":
+#         x = int(leaf.attrib["x"][:-1])
+#         y = int(leaf.attrib["y"])
+#         value = int(leaf.text[:-1])
+#         spawn = main.tic_tac_toe.spawnTile(x, y, value)
+#         print(spawn)
+#     if leaf.tag == "move":
+#         if leaf.text == "up":
+#             main.movew(xml=True)
+#         if leaf.text == "left_down":
+#             main.movea(xml=True)
+#         if leaf.text == "down":
+#             main.moves(xml=True)
+#         if leaf.text == "left_up":
+#             main.moveq(xml=True)
+#         if leaf.text == "right_up":
+#             main.movee(xml=True)
+#         if leaf.text == "right_down":
+#             main.moved(xml=True)
+#
+# def read_xml(filename="przykladowy.xml",main=object):
+#     tree = et.parse(filename)
+#     root = tree.getroot()
+#
+#     size=root.attrib["board_size"]
+#
+#     main.change_size(size,xml=True)
+#     for child in root:
+#         # if child.attrib["nr"]==1:
+#             for leaf in child:
+#                 main.timer=QtCore.QTimer()
+#                 main.timer.setInterval(500)
+#                 main.timer.start()
+#                 main.timer.timeout.connect(iterate_xml(leaf,main))
+#
+#                 main.timer.stop()
+#                 # iterate_xml(leaf,main)
+#
+#
+#
+#                 # print(leaf.tag, leaf.attrib, leaf.text)
+#
+# # funkcja edytująca nam xml
+# def create_xml(filename="przykladowy.xml",size=3,history=[]):
+#     # tree = et.parse('./spam/dict.xml')
+#     root = et.Element("hex2048",{"board_size":str(size)})#.getroot()
+#
+#     player1=et.Element("player",{"nr":"1"})
+#     root.append(player1)
+#
+#     player2=et.Element("player",{"nr":"2"})
+#     root.append(player2)
+#
+#     for el in history:
+#         if el[0]=="Spawned":
+#             tmp=et.SubElement(player1,"spawn_value",{"x":str(el[6]),"y":str(el[7])})
+#             tmp.text=str(el[4])
+#         if el[0]=="Move":
+#             tmp=et.SubElement(player1,"move")
+#             tmp.text = str(el[-1])
+#         if el[0]=="Score":
+#             tmp = et.SubElement(player1, "score")
+#             tmp.text = str(el[-1])
+#     # if filename[:-4]!=".xml":
+#     #     output=filename+".xml"
+#     # else:
+#     output=filename
+#     tree = et.ElementTree(root)
+#     tree.write(output, xml_declaration=True, encoding='utf-8')
     # # wpisujemy wszystkie prawdopodobienstwa ham, do elementów drzewa
     # for el in ham_probab:
     #     data = et.Element("word", {"type": "ham", "probability": str(round(ham_probab[el],4))})
@@ -524,14 +549,31 @@ class SaveHistory(QtWidgets.QFileDialog):
                 for el in splited:
                     tmp=el.split()
                     splited_words.append(tmp)
-                create_xml(self.filename,main.size,splited_words)
+                main.create_xml(self.filename,main.size,splited_words)
                 # file.write(text)
                 # file.close()
             except:
                 print("Nie zapisano historii gry!")
                 out=MessageB(self,"History")
             # self.mode=self.setFileMode(QtWidgets.QFileDialog.AnyFile)
-            # self.show()
+            # self.show(
+        if type == "History Last Move":
+            self.filename, _ = self.getSaveFileName(self, "Save game history", "history.xml", "XML File (*.xml)")
+            try:
+                # file = open(self.filename, 'w')
+                text = main.historia.toPlainText()
+                splited = text.splitlines()
+                splited_words = []
+                for el in splited:
+                    tmp = el.split()
+                    splited_words.append(tmp)
+                splited_words_last_move=splited_words[:-3]
+                main.create_xml(self.filename, main.size, splited_words_last_move)
+                # file.write(text) 
+                # file.close()
+            except:
+                print("Nie zapisano historii gry!")
+                out = MessageB(self, "History")
         if type=="Config":
             self.filename, _ = self.getSaveFileName(self, "Save game configuration", "config.json", "JSON File (*.json)")
             try:
@@ -548,7 +590,7 @@ class SaveHistory(QtWidgets.QFileDialog):
             self.filename, _ = self.getOpenFileNames(self, "Select a xml file with game history to emulate", "","XML Files (*.xml)")
             try:
                 base=os.path.basename(self.filename[0])
-                read_xml(base,main)
+                main.read_xml(base)
             except:
                 print("Nie otworzono pliku xml do emulowania!")
                 out=MessageB(self,"Emulate")
@@ -577,6 +619,13 @@ class MessageB(QtWidgets.QMessageBox):
                 self.close()
             else:
                 # dodac resetowanie score'a
+                text = main.historia.toPlainText()
+                splited = text.splitlines()
+                splited_words = []
+                for el in splited:
+                    tmp = el.split()
+                    splited_words.append(tmp)
+                main.create_xml(filename="last_save.xml",size=self.size,history=splited_words)
                 main.tic_tac_toe.hide()
                 main.gracz_sieciowy.hide()
                 main.historia.clear()
@@ -607,6 +656,20 @@ class MessageB(QtWidgets.QMessageBox):
 
             if ret == QtWidgets.QMessageBox.Cancel:
                 self.close()
+        if type=="History Last Move":
+            self.setText("Czy chcesz zapisac gre bez ostatniego ruchu?")
+            self.setInformativeText("Przechowywanie historii z możliwością cofnięcia ostatniego ruchu")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+            self.setDefaultButton(QtWidgets.QMessageBox.Cancel)
+            ret = self.exec_()
+
+            if ret == QtWidgets.QMessageBox.Ok:
+                pop=SaveHistory(main,"History Last Move")
+                self.close()
+            else:
+                pop = SaveHistory(main, "History")
+                self.close()
+
 
         if type=="Config":
             self.setText("NIE ZAPISANO KONFIGURACJI GRY!")
@@ -761,6 +824,20 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.S.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_S))
         self.S.clicked.connect(self.moves)
 
+        self.leaf_list = []
+        self.iterator = 0
+        self.timer=QtCore.QTimer()
+        self.timer.setInterval(500)
+        # self.timer.timeout.connect(self.iterate_xml(self.leaf_list))
+        # self.timer.start()
+
+
+        self.timer_allow=False
+        #     self.timer.start()
+        # else:
+        #     self.timer.stop()
+
+
         przyciski = QtWidgets.QGraphicsSimpleTextItem()
         przyciski.setText("Buttons")
         przyciski.setX(500)
@@ -769,6 +846,102 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.scene.addItem(przyciski)
 
 
+    def closeEvent(self, event):
+        text = self.historia.toPlainText()
+        splited = text.splitlines()
+        splited_words = []
+        for el in splited:
+            tmp = el.split()
+            splited_words.append(tmp)
+        self.create_xml(filename="last_save.xml",size=self.size,history=splited_words)
+        print("Wychodze")
+    # def update_view(self):
+    #     self.scene.update()
+
+    def iterate_xml(self):
+        if self.timer_allow==True:
+            if self.leaf_list[self.iterator].tag == "spawn_value":
+                x = int(self.leaf_list[self.iterator].attrib["x"][:-1])
+                y = int(self.leaf_list[self.iterator].attrib["y"])
+                value = int(self.leaf_list[self.iterator].text[:-1])
+                spawn = self.tic_tac_toe.spawnTile(x, y, value)
+                print(spawn)
+            if self.leaf_list[self.iterator].tag == "move":
+                if self.leaf_list[self.iterator].text == "up":
+                    self.movew(xml=True)
+                if self.leaf_list[self.iterator].text == "left_down":
+                    self.movea(xml=True)
+                if self.leaf_list[self.iterator].text == "down":
+                    self.moves(xml=True)
+                if self.leaf_list[self.iterator].text == "left_up":
+                    self.moveq(xml=True)
+                if self.leaf_list[self.iterator].text == "right_up":
+                    self.movee(xml=True)
+                if self.leaf_list[self.iterator].text == "right_down":
+                    self.moved(xml=True)
+            self.iterator += 1
+            if self.iterator == len(self.leaf_list):
+                self.timer_allow=False
+                self.timer.stop()
+
+    def read_xml(self,filename="przykladowy.xml"):
+        self.tree = et.parse(filename)
+        self.root = self.tree.getroot()
+        self.iterator=0
+        size = self.root.attrib["board_size"]
+        self.leaf_list=[]
+        self.timer_allow=True
+        self.change_size(size, xml=True)
+        for child in self.root:
+            # if child.attrib["nr"]==1:
+            # self.timer.start()
+            for leaf in child:
+                self.leaf_list.append(leaf)
+
+        self.timer_allow=True
+        self.timer.timeout.connect(self.iterate_xml)
+        self.timer.start()
+
+
+                # self.iterate_xml(leaf)
+                # self.timer.timeout.connect(self.iterate_xml(leaf))
+                # self.timer = QtCore.QTimer()
+                # self.timer.setInterval(500)
+                # self.timer.start()
+                # self.timer.timeout.connect(self.iterate_xml(leaf))
+
+            # self.timer.stop()
+                # iterate_xml(leaf,main)
+
+                # print(leaf.tag, leaf.attrib, leaf.text)
+
+    # funkcja edytująca nam xml
+    def create_xml(self,filename="przykladowy.xml", size=3, history=[]):
+        # tree = et.parse('./spam/dict.xml')
+        root = et.Element("hex2048", {"board_size": str(size)})  # .getroot()
+
+        player1 = et.Element("player", {"nr": "1"})
+        root.append(player1)
+
+        player2 = et.Element("player", {"nr": "2"})
+        root.append(player2)
+
+        for el in history:
+            if el[0] == "Spawned":
+                tmp = et.SubElement(player1, "spawn_value", {"x": str(el[6]), "y": str(el[7])})
+                tmp.text = str(el[4])
+            if el[0] == "Move":
+                tmp = et.SubElement(player1, "move")
+                tmp.text = str(el[-1])
+            if el[0] == "Score":
+                tmp = et.SubElement(player1, "score")
+                tmp.text = str(el[-1])
+        # if filename[:-4]!=".xml":
+        #     output=filename+".xml"
+        # else:
+        output = filename
+        tree = et.ElementTree(root)
+        tree.write(output, xml_declaration=True, encoding='utf-8')
 
     def change_size(self, q,xml=False):
         if q == "4":
@@ -808,7 +981,8 @@ class MainWindow(QtWidgets.QGraphicsView):
         print("Koniec")
 
     def saveHistory(self):
-        self.dialog = SaveHistory(self,"History")
+        self.messbox=MessageB(self,"History Last Move")
+        # self.dialog = SaveHistory(self,"History")
     def saveConfig(self):
         self.dialog = SaveHistory(self,"Config")
 
@@ -873,7 +1047,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.helpContentAction = QtWidgets.QAction("&Help Content", self)
         self.aboutAction = QtWidgets.QAction("&About", self)
 
-    def movea(self):
+    def movea(self,xml=False):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
 
         self.tic_tac_toe.moves(direction="left_down")
@@ -890,11 +1064,13 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.historia.append("Score = " + str(self.tic_tac_toe.score))
         self.labelScore.setText(str(self.tic_tac_toe.score))
 
-        spawn = self.tic_tac_toe.spawnTile()
-        print(spawn)
-        self.historia.append(spawn)
+        if xml==False:
+            spawn = self.tic_tac_toe.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
 
-    def moveq(self):
+
+    def moveq(self,xml=False):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
         self.tic_tac_toe.moves(direction="left_up")
         changed = self.tic_tac_toe.merge(direction="left_up")
@@ -910,11 +1086,13 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.labelScore.setText(str(self.tic_tac_toe.score))
         self.historia.append("Score = " + str(self.tic_tac_toe.score))
 
-        spawn = self.tic_tac_toe.spawnTile()
-        print(spawn)
-        self.historia.append(spawn)
+        if xml==False:
+            spawn = self.tic_tac_toe.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
 
-    def movew(self):
+
+    def movew(self,xml=False):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
         self.tic_tac_toe.moves(direction="up")
         changed = self.tic_tac_toe.merge(direction="up")
@@ -930,11 +1108,13 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.labelScore.setText(str(self.tic_tac_toe.score))
         self.historia.append("Score = " + str(self.tic_tac_toe.score))
 
-        spawn = self.tic_tac_toe.spawnTile()
-        print(spawn)
-        self.historia.append(spawn)
+        if xml==False:
+            spawn = self.tic_tac_toe.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
 
-    def movee(self):
+
+    def movee(self,xml=False):
 
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
         self.tic_tac_toe.moves(direction="right_up")
@@ -951,11 +1131,13 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.labelScore.setText(str(self.tic_tac_toe.score))
         self.historia.append("Score = " + str(self.tic_tac_toe.score))
 
-        spawn = self.tic_tac_toe.spawnTile()
-        print(spawn)
-        self.historia.append(spawn)
+        if xml==False:
+            spawn = self.tic_tac_toe.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
 
-    def moves(self):
+
+    def moves(self,xml=False):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
         self.tic_tac_toe.moves(direction="down")
         changed = self.tic_tac_toe.merge(direction="down")
@@ -971,11 +1153,13 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.labelScore.setText(str(self.tic_tac_toe.score))
         self.historia.append("Score = " + str(self.tic_tac_toe.score))
 
-        spawn = self.tic_tac_toe.spawnTile()
-        print(spawn)
-        self.historia.append(spawn)
+        if xml==False:
+            spawn = self.tic_tac_toe.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
 
-    def moved(self):
+
+    def moved(self,xml=False):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
         self.tic_tac_toe.moves(direction="right_down")
         changed = self.tic_tac_toe.merge(direction="right_down")
@@ -991,9 +1175,10 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.labelScore.setText(str(self.tic_tac_toe.score))
         self.historia.append("Score = " + str(self.tic_tac_toe.score))
 
-        spawn = self.tic_tac_toe.spawnTile()
-        print(spawn)
-        self.historia.append(spawn)
+        if xml==False:
+            spawn = self.tic_tac_toe.spawnTile()
+            print(spawn)
+            self.historia.append(spawn)
 
     def keyPressEvent(self, event):
         key = event.key()
