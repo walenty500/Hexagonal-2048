@@ -192,6 +192,10 @@ class TicTacToe(QtWidgets.QGraphicsItem):
         #     b.append(np.zeros(n + i, dtype=object))
         # for i in range(1, n):
         #     b.append(np.zeros(2 * n - 1 - i, dtype=object))
+        self.nr_of_elem=0
+        for i in range(n,2*n-1):
+            self.nr_of_elem +=2*i
+        self.nr_of_elem+=2*n-1
         self.size = n
         self.board = b
         self.y_board = b_y
@@ -203,6 +207,8 @@ class TicTacToe(QtWidgets.QGraphicsItem):
         self.X = 1
         self.turn = self.O
         self.coords = 0
+        self.full_board=False
+        # self.nr_of_elem=0
 
     # def reset(self):
     #     for y in range(self.size):
@@ -217,6 +223,17 @@ class TicTacToe(QtWidgets.QGraphicsItem):
     #     if self.board[y][x] == -1:
     #         self.board[y][x] = self.turn
     #         self.turn = 1 - self.turn
+
+    def check_if_board_full(self):
+        counter=0
+
+        for j in range(len(self.board)):
+            for i in range(len(self.board[j])):
+                if self.board[j][i].value!=0:
+                    counter+=1
+        if counter==self.nr_of_elem:
+            self.full_board=True
+            print("Plansza pełna")
 
     def paint(self, painter, option, widget):
         # # painter.setPen(QtCore.Qt.black)
@@ -315,22 +332,28 @@ class TicTacToe(QtWidgets.QGraphicsItem):
             value = val
         # if(self.board[x])
         # hex=Hexagon()
-        if x_in == -1 and y_in == -1:
-            while (self.board[x][y].value != 0):
-                x = random.randint(0, 2 * self.size - 2)
-                y = random.randint(0, len(self.board[x]) - 1)
-        else:
-            x = x_in
-            y = y_in
+        self.check_if_board_full()
+        if self.full_board==False:
+            if x_in == -1 and y_in == -1:
+                while (self.board[x][y].value != 0):
+                    x = random.randint(0, 2 * self.size - 2)
+                    y = random.randint(0, len(self.board[x]) - 1)
+            else:
+                x = x_in
+                y = y_in
 
         # print("Spawned tile of value " + str(value) + ", at: " + str(x) + ", " + str(y))
-        output = "Spawned tile of value " + str(value) + ", at: " + str(x) + ", " + str(y)
-        self.board[x][y].value = value
+            output = "Spawned tile of value " + str(value) + ", at: " + str(x) + ", " + str(y)
+            self.board[x][y].value = value
+            self.update()
+        else:
+            output = "Plansza pełna - przegrałeś grę!"
+            print("Pełna tablica")
 
         # else:
         #     print("Wylosowałem " + str(x) + "," + str(y) + " ale jest już zajęte!")
 
-        self.update()
+        # self.update()
 
         return output
 
@@ -521,11 +544,47 @@ class PopupWindow(QtWidgets.QDialog):
         self.main_window = main
         if type == "&Opcje gry":
             self.game()
+        if type =="&Opcje sieciowe":
+            self.net()
 
     def net(self):
-        pass
+        net_name=QtWidgets.QLabel("Nazwa przeciwnika: ")
+        self.net_player=QtWidgets.QLineEdit()
+        self.net_player.setPlaceholderText("Web Player")
+        self.net_player.textChanged.connect(self.main_window.change_web_name)
+        ip=QtWidgets.QLabel("Adres IP: ")
+        self.ip=QtWidgets.QLineEdit()
+        self.ip.setText("127.0.0.1")
+        self.ip.textChanged.connect(self.main_window.change_ip)
+        port=QtWidgets.QLabel("Port połączenia: ")
+        self.port=QtWidgets.QLineEdit()
+        self.port.setText("8080")
+        self.port.textChanged.connect(self.main_window.change_port)
+        self.wyszukaj=QtWidgets.QPushButton()
+        self.wyszukaj.setText("Wyszukaj gracza\nw sieci lokalnej")
+        self.polacz=QtWidgets.QPushButton()
+        self.polacz.setText("Połącz")
+
+
+
+        window_layout = QtWidgets.QVBoxLayout()
+        window_layout.addWidget(net_name)
+        window_layout.addWidget(self.net_player)
+        window_layout.addWidget(ip)
+        window_layout.addWidget(self.ip)
+        window_layout.addWidget(port)
+        window_layout.addWidget(self.port)
+        window_layout.addWidget(self.wyszukaj)
+        window_layout.addWidget(self.polacz)
+        self.setLayout(window_layout)
+        self.setGeometry(200, 200, 400, 400)
+        self.setWindowTitle("Ustawienia sieciowe")
 
     def game(self):
+        player_name=QtWidgets.QLabel("Wybierz swoją nazwę: ")
+        self.player=QtWidgets.QLineEdit()
+        self.player.setPlaceholderText("Player A")
+        self.player.textChanged.connect(self.main_window.change_name)
         board_size = QtWidgets.QLabel("Wybierz rozmiar planszy: ")
         self.board_size_combobox = QtWidgets.QComboBox()
         self.board_size_combobox.addItem('3')
@@ -534,6 +593,8 @@ class PopupWindow(QtWidgets.QDialog):
         self.board_size_combobox.currentTextChanged.connect(self.main_window.change_size)
 
         window_layout = QtWidgets.QVBoxLayout()
+        window_layout.addWidget(player_name)
+        window_layout.addWidget(self.player)
         window_layout.addWidget(board_size)
         window_layout.addWidget(self.board_size_combobox)
         self.setLayout(window_layout)
@@ -584,6 +645,7 @@ class SaveHistory(QtWidgets.QFileDialog):
             self.filename, _ = self.getSaveFileName(self, "Save game configuration", "config.json",
                                                     "JSON File (*.json)")
             try:
+                main.create_json()
                 file = open(self.filename, 'w')
                 text = main.historia.toPlainText()
                 file.write(text)
@@ -598,9 +660,13 @@ class SaveHistory(QtWidgets.QFileDialog):
                                                      "XML Files (*.xml)")
             try:
                 base = os.path.basename(self.filename[0])
-                main.read_xml(base)
-            except:
+                baza=self.filename[0]
+                main.read_xml(baza)
+            except Exception as e:
+                # print(e)
                 print("Nie otworzono pliku xml do emulowania!")
+                # print(base)
+                # print(baza)
                 out = MessageB(self, "Emulate")
 
 
@@ -680,6 +746,46 @@ class MessageB(QtWidgets.QMessageBox):
                 pop = SaveHistory(main, "History")
                 self.close()
 
+        if type == "Koniec Gry":
+            self.setText("Koniec Gry - zacząć nową grę?")
+            # self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+            self.setDefaultButton(QtWidgets.QMessageBox.Ok)
+            ret = self.exec_()
+
+            if ret == QtWidgets.QMessageBox.Cancel:
+                main.close()
+            else:
+                # dodac resetowanie score'a
+                text = main.historia.toPlainText()
+                splited = text.splitlines()
+                splited_words = []
+                for el in splited:
+                    tmp = el.split()
+                    splited_words.append(tmp)
+                main.create_xml(filename="last_save.xml", size=self.size, history=splited_words)
+                main.tic_tac_toe.hide()
+                # main.gracz_sieciowy.hide()
+                main.historia.clear()
+
+                del main.tic_tac_toe
+                main.tic_tac_toe = TicTacToe(int(main.size), 250, 100)
+
+                spawn = main.tic_tac_toe.spawnTile()
+                print(spawn)
+                main.historia.append(spawn)
+
+                spawn = main.tic_tac_toe.spawnTile()
+                print(spawn)
+                main.historia.append(spawn)
+
+                del main.gracz_sieciowy
+                main.gracz_sieciowy = TicTacToe(int(main.size), 800, 100)
+
+                main.scene.addItem(main.tic_tac_toe)
+                main.scene.addItem(main.gracz_sieciowy)
+                main.scene.update()
+
         if type == "Config":
             self.setText("NIE ZAPISANO KONFIGURACJI GRY!")
             # self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
@@ -692,6 +798,24 @@ class MessageB(QtWidgets.QMessageBox):
         if type == "Emulate":
             self.setText("NIE OTWORZONO PLIKU DO EMULOWANIA!")
             # self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            self.setDefaultButton(QtWidgets.QMessageBox.Ok)
+            ret = self.exec_()
+
+            if ret == QtWidgets.QMessageBox.Cancel:
+                self.close()
+        if type == "Wrong File":
+            self.setText("Podano zły plik!")
+            # self.setInformativeText("Zamknięcie gry bez zapisywania spowoduje utratę progresu.")
+            self.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            self.setDefaultButton(QtWidgets.QMessageBox.Ok)
+            ret = self.exec_()
+
+            if ret == QtWidgets.QMessageBox.Cancel:
+                self.close()
+        if type=="Wrong XML":
+            self.setText("Podano niepoprawny plik xml!")
+            self.setInformativeText("To nie jest historia gry.")
             self.setStandardButtons(QtWidgets.QMessageBox.Ok)
             self.setDefaultButton(QtWidgets.QMessageBox.Ok)
             ret = self.exec_()
@@ -716,21 +840,21 @@ class MainWindow(QtWidgets.QGraphicsView):
         super(MainWindow, self).__init__()
         self.scene = QtWidgets.QGraphicsScene(self)
         self.host = '127.0.0.1'
-        self.port = 8081
+        self.port = 8080
         self.name = "Player A"
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 5)
-        self.naglowek=1024
-        self.naglowek_size=5
-        try:
-            self.sock.connect((self.host, self.port))
-            self.role = "Client"
-        except:
-            self.sock.bind((self.host, self.port))
-            self.role = "Server"
-            self.clients = []
-            self.sock.listen()
-        print(self.role)
+        # self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 5)
+        # self.naglowek=1024
+        # self.naglowek_size=5
+        # try:
+        #     self.sock.connect((self.host, self.port))
+        #     self.role = "Client"
+        # except:
+        #     self.sock.bind((self.host, self.port))
+        #     self.role = "Server"
+        #     self.clients = []
+        #     self.sock.listen()
+        # print(self.role)
         self._createActions()
         self._createMenuBar()
         # self._connectActions()
@@ -750,13 +874,13 @@ class MainWindow(QtWidgets.QGraphicsView):
 
         # wylosowanie mu na początku 2 płytek
         spawn = self.tic_tac_toe.spawnTile()
-        if self.role == "Client":
-            self.writeClient(spawn)
+        # if self.role == "Client":
+        #     self.writeClient(spawn)
         print(spawn)
         self.historia.append(spawn)
         spawn = self.tic_tac_toe.spawnTile()
-        if self.role == "Client":
-            self.writeClient(spawn)
+        # if self.role == "Client":
+        #     self.writeClient(spawn)
         print(spawn)
         self.historia.append(spawn)
         # gracz sieciowy
@@ -764,15 +888,16 @@ class MainWindow(QtWidgets.QGraphicsView):
 
         # label z wynikiem gracza 1
         self.labelA = QtWidgets.QGraphicsSimpleTextItem()
-        self.labelA.setText("Player A Score: ")
+        self.labelA.setText(self.name+" Score: ")
         self.labelA.setY(20)
+
         font = QtGui.QFont("Helvetica", 15, QtGui.QFont.Bold)
         self.labelA.setFont(font)
         self.scene.addItem(self.labelA)
         self.labelScore = QtWidgets.QGraphicsSimpleTextItem()
         self.labelScore.setText(str(self.tic_tac_toe.score))
-        self.labelScore.setX(180)
-        self.labelScore.setY(20)
+        self.labelScore.setX(0)
+        self.labelScore.setY(50)
         self.labelScore.setFont(font)
 
         # label z wynikiem gracza sieciowego
@@ -780,7 +905,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.labelWeb.setText("Web Player Score: ")
         self.labelWeb.setFont(font)
         self.labelWeb.setX(500)
-        self.labelWeb.setY(20)
+        self.labelWeb.setY(50)
         self.scene.addItem(self.labelWeb)
         self.labelWebScore = QtWidgets.QGraphicsSimpleTextItem()
         self.labelWebScore.setText(str(self.gracz_sieciowy.score))
@@ -791,7 +916,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         # dodawanie elementów do sceny
         self.scene.addWidget(self.historia)
         self.scene.addItem(self.labelScore)
-        self.scene.addItem(self.labelWebScore)
+        # self.scene.addItem(self.labelWebScore)
         self.scene.addItem(self.tic_tac_toe)
         self.scene.addItem(self.gracz_sieciowy)
         # scene.setSceneRect(0, 0, 1200, 700)
@@ -872,17 +997,31 @@ class MainWindow(QtWidgets.QGraphicsView):
         przyciski.setFont(font)
         self.scene.addItem(przyciski)
 
-        if self.role == "Server":
-            self.receive_thread = threading.Thread(target=self.receiveServ)
-            self.receive_thread.start()
-
-        if self.role == "Client":
-            self.receive_thread = threading.Thread(target=self.receiveClient)
-            self.receive_thread.start()
+        # if self.role == "Server":
+        #     self.receive_thread = threading.Thread(target=self.receiveServ,daemon=True)
+        #     self.receive_thread.start()
+        #
+        # if self.role == "Client":
+        #     self.receive_thread = threading.Thread(target=self.receiveClient,daemon=True)
+        #     self.receive_thread.start()
 
             # self.write_thread=threading.Thread(target=self.write)
             # self.write_thread.start()
 
+    def change_port(self,q):
+        # print(type(q))
+        try:
+            self.port=int(q)
+        except:
+            print("Niepoprawny port")
+    def change_ip(self,q):
+        self.host=q
+    def change_web_name(self,q):
+        self.web_name=q
+        self.labelWeb.setText(self.web_name+" Score: ")
+    def change_name(self,q):
+        self.name=q
+        self.labelA.setText(self.name+" Score: ")
     def closeEvent(self, event):
         text = self.historia.toPlainText()
         splited = text.splitlines()
@@ -891,6 +1030,9 @@ class MainWindow(QtWidgets.QGraphicsView):
             tmp = el.split()
             splited_words.append(tmp)
         self.create_xml(filename="last_save.xml", size=self.size, history=splited_words)
+        # self.receive_thread=0
+        # if self.role=="Server":
+        #     self.handle_thread=0
         print("Wychodze")
 
     def writeClient(self, mess):
@@ -968,8 +1110,8 @@ class MainWindow(QtWidgets.QGraphicsView):
             # client.send('Connected!'.encode('utf-8'))
 
             # obsługa wątku przychodzacych wiadomosci i ich ewentualnego rozsylania
-            thread = threading.Thread(target=self.handle, args=(client,))
-            thread.start()
+            self.handle_thread = threading.Thread(target=self.handle, args=(client,),daemon=True)
+            self.handle_thread.start()
 
     def iterate_xml(self):
         if self.timer_allow == True:
@@ -978,6 +1120,7 @@ class MainWindow(QtWidgets.QGraphicsView):
                 y = int(self.leaf_list[self.iterator].attrib["y"])
                 value = int(self.leaf_list[self.iterator].text[:-1])
                 spawn = self.tic_tac_toe.spawnTile(x, y, value)
+                self.historia.append(spawn)
                 print(spawn)
             if self.leaf_list[self.iterator].tag == "move":
                 if self.leaf_list[self.iterator].text == "up":
@@ -998,22 +1141,52 @@ class MainWindow(QtWidgets.QGraphicsView):
                 self.timer.stop()
 
     def read_xml(self, filename="przykladowy.xml"):
-        self.tree = et.parse(filename)
-        self.root = self.tree.getroot()
-        self.iterator = 0
-        size = self.root.attrib["board_size"]
-        self.leaf_list = []
-        self.timer_allow = True
-        self.change_size(size, xml=True)
-        for child in self.root:
-            # if child.attrib["nr"]==1:
-            # self.timer.start()
-            for leaf in child:
-                self.leaf_list.append(leaf)
+        try:
+            self.tree = et.parse(filename)
+            self.root = self.tree.getroot()
+            self.iterator = 0
+            tag=True
+            tmp=self.root.tag
+            if tmp!="hex2048":
+                tag=False
+                # print(tmp)
 
-        self.timer_allow = True
-        self.timer.timeout.connect(self.iterate_xml)
-        self.timer.start()
+            attr=False
+            atributes=self.root.attrib
+            if atributes=={'board_size': '3'} or atributes=={'board_size': '4'} or atributes=={'board_size': '5'}:
+                attr = True
+
+            if attr==True:
+                size = self.root.attrib["board_size"]
+            # print(atributes)
+            # print(attr)
+            # print(tmp)
+            # print(tag)
+            if attr==True and tag==True:
+                self.leaf_list = []
+                self.timer_allow = True
+                self.change_size(size, xml=True)
+                for child in self.root:
+                    # if child.attrib["nr"]==1:
+                    # self.timer.start()
+                    for leaf in child:
+                        self.leaf_list.append(leaf)
+
+                # for child in self.root:
+                #     # if child.attrib["nr"]==1:
+                #     # self.timer.start()
+                #     for leaf in child:
+                #         self.iterate_xml()
+                self.timer_allow = True
+                self.timer.timeout.connect(self.iterate_xml)
+                self.timer.start()
+            else:
+                self.messbox=MessageB(self,type="Wrong XML")
+        except:
+            self.messbox=MessageB(self,type="Wrong File")
+
+
+
 
         # self.iterate_xml(leaf)
         # self.timer.timeout.connect(self.iterate_xml(leaf))
@@ -1055,6 +1228,9 @@ class MainWindow(QtWidgets.QGraphicsView):
         tree = et.ElementTree(root)
         tree.write(output, xml_declaration=True, encoding='utf-8')
 
+    def create_json(self,filename="przyklad.json"):
+
+        pass
     def change_size(self, q, xml=False):
         if q == "4":
             self.size = 4
@@ -1112,9 +1288,12 @@ class MainWindow(QtWidgets.QGraphicsView):
     def con(self, q):
         if q.text() == "&Nowa gra":
             self.newGame()
-        if q.text() == "&Opcje gry":
+        if q.text() == "&Opcje gry" or q.text()=="&Opcje sieciowe":
             self.pop = PopupWindow(self, q.text())
             self.pop.show()
+        # if q.text()=="&Opcje sieciowe":
+        #     self.pop = PopupWindow(self, q.text())
+        #     self.pop.show()
             # self.historia.append("POPUP")
         if q.text() == "&Zapisz historie":
             self.saveHistory()
@@ -1144,7 +1323,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         # self.menubar.addMenu(fileMenu)
         # self.menubar.addAction(self.cutAction)
         # Using a title
-        editMenu = self.menubar.addMenu("&Edit")
+
 
     def _createActions(self):
         # Creating action using the first constructor
@@ -1184,6 +1363,9 @@ class MainWindow(QtWidgets.QGraphicsView):
             spawn = self.tic_tac_toe.spawnTile()
             print(spawn)
             self.historia.append(spawn)
+            if spawn == "Plansza pełna - przegrałeś grę!":
+                self.messbox=MessageB(self,type="Koniec Gry")
+
 
     def moveq(self, xml=False):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
@@ -1205,6 +1387,8 @@ class MainWindow(QtWidgets.QGraphicsView):
             spawn = self.tic_tac_toe.spawnTile()
             print(spawn)
             self.historia.append(spawn)
+            if spawn == "Plansza pełna - przegrałeś grę!":
+                self.messbox=MessageB(self,type="Koniec Gry")
 
     def movew(self, xml=False):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
@@ -1226,6 +1410,8 @@ class MainWindow(QtWidgets.QGraphicsView):
             spawn = self.tic_tac_toe.spawnTile()
             print(spawn)
             self.historia.append(spawn)
+            if spawn == "Plansza pełna - przegrałeś grę!":
+                self.messbox=MessageB(self,type="Koniec Gry")
 
     def movee(self, xml=False):
 
@@ -1248,6 +1434,8 @@ class MainWindow(QtWidgets.QGraphicsView):
             spawn = self.tic_tac_toe.spawnTile()
             print(spawn)
             self.historia.append(spawn)
+            if spawn == "Plansza pełna - przegrałeś grę!":
+                self.messbox=MessageB(self,type="Koniec Gry")
 
     def moves(self, xml=False):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
@@ -1269,6 +1457,8 @@ class MainWindow(QtWidgets.QGraphicsView):
             spawn = self.tic_tac_toe.spawnTile()
             print(spawn)
             self.historia.append(spawn)
+            if spawn == "Plansza pełna - przegrałeś grę!":
+                self.messbox=MessageB(self,type="Koniec Gry")
 
     def moved(self, xml=False):
         replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
@@ -1290,6 +1480,37 @@ class MainWindow(QtWidgets.QGraphicsView):
             spawn = self.tic_tac_toe.spawnTile()
             print(spawn)
             self.historia.append(spawn)
+            if spawn == "Plansza pełna - przegrałeś grę!":
+                self.messbox=MessageB(self,type="Koniec Gry")
+
+    def mousePressEvent(self, event):
+        if event.pos().x() < 600 and event.pos().y() < 600:
+            self.m_pos_x_pr = event.pos().x()
+            self.m_pos_y_pr = event.pos().y()
+            self.mouse_pressed = True
+
+    def mouseReleaseEvent(self, event):
+        m_pos_x_rel = event.pos().x()
+        m_pos_y_rel = event.pos().y()
+
+        if self.mouse_pressed:
+            y = m_pos_y_rel - self.m_pos_y_pr
+            x = m_pos_x_rel - self.m_pos_x_pr
+            angle = math.atan2(-y, x)
+            if math.fabs(y) > 100 or math.fabs(x) > 100:
+                if angle > 0 and angle < 1 / 3 * math.pi:
+                    self.movee()
+                if angle > 1 / 3 * math.pi and angle < 2 / 3 * math.pi:
+                    self.movew()
+                if angle > 2 / 3 * math.pi and angle < math.pi:
+                    self.moveq()
+                if angle < 0 and angle > -1 / 3 * math.pi:
+                    self.moved()
+                if angle < -1 / 3 * math.pi and angle > - 2 / 3 * math.pi:
+                    self.moves()
+                if angle < - 2 / 3 * math.pi and angle > - math.pi:
+                    self.movea()
+        self.mouse_pressed = False
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -1300,6 +1521,9 @@ class MainWindow(QtWidgets.QGraphicsView):
             spawn = self.tic_tac_toe.spawnTile()
             print(spawn)
             self.historia.append(spawn)
+            if spawn == "Plansza pełna - przegrałeś grę!":
+                self.messbox=MessageB(self,type="Koniec Gry")
+
         if key == QtCore.Qt.Key_2:
             spawn = self.gracz_sieciowy.spawnTile()
             print(spawn)
