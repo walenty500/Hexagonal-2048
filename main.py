@@ -749,9 +749,11 @@ class MainWindow(QtWidgets.QGraphicsView):
         try:
             self.sock.connect((self.host, self.port))
             self.role = "Client"
+            self.can_move=True
         except:
             self.sock.bind((self.host, self.port))
             self.role = "Server"
+            self.can_move=False
             self.clients = []
             self.sock.listen()
         print(self.role)
@@ -777,7 +779,7 @@ class MainWindow(QtWidgets.QGraphicsView):
             self.writeClient(spawn)
         if self.role =="Server":
             self.initialSpawn.append(spawn)
-            self.broadcast(spawn.encode(encoding='utf-8'))
+            self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
 
         print(spawn)
         # wypisywanie do konsoli i przekierowywanie na kontrolkę QTextEdit
@@ -790,7 +792,7 @@ class MainWindow(QtWidgets.QGraphicsView):
             self.writeClient(spawn)
         if self.role =="Server":
             self.initialSpawn.append(spawn)
-            self.broadcast(spawn.encode(encoding='utf-8'))
+            self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
         print(spawn)
         self.historia.append(spawn)
 
@@ -956,6 +958,7 @@ class MainWindow(QtWidgets.QGraphicsView):
         # a=mess
         # words=a.split()
         # struktura wiadomosci, ktora wysylamy wszystkim
+        self.can_move=False
         message = self.role + ' sends ' + mess
         naglowek = len(message)
         rozmiar_nagl = str(len(message))
@@ -977,7 +980,30 @@ class MainWindow(QtWidgets.QGraphicsView):
                 # message=self.sock.recv(nagl)
                 conv = message.decode('utf-8')
                 # wypisywanie jej w terminalu osoby
-                print(conv)
+                a = message
+                words = a.split()
+                if words[0]=="Server".encode('utf-8'):
+                    self.can_move=True
+                    print(conv)
+                    self.historia.append(conv)
+                    if words[2] == "Spawned".encode('utf-8'):
+                        x = int(words[8].decode('utf-8')[:-1])
+                        y = int(words[9].decode('utf-8'))
+                        val = int(words[6].decode('utf-8')[:-1])
+                        self.gracz_sieciowy.spawnTile(x, y, val)
+                    if words[2] == "Move".encode('utf-8'):
+                        if words[5] == "left_down".encode('utf-8'):
+                            self.moveaweb()
+                        if words[5] == "left_up".encode('utf-8'):
+                            self.moveqweb()
+                        if words[5] == "up".encode('utf-8'):
+                            self.movewweb()
+                        if words[5] == "down".encode('utf-8'):
+                            self.movesweb()
+                        if words[5] == "right_up".encode('utf-8'):
+                            self.moveeweb()
+                        if words[5] == "right_down".encode('utf-8'):
+                            self.movedweb()
                 # to robi pisanie u klienta tego co zrobil
                 # self.historia.append(conv)
             except:
@@ -989,16 +1015,41 @@ class MainWindow(QtWidgets.QGraphicsView):
 
     # wysyłanei do wszystkich uzytkowników odebranej wiadomości
     def broadcast(self, message):
-        print(message.decode('utf-8'))
-        self.historia.append(message.decode('utf-8'))
-        rozmiar_nagl = str(len(message))
-        while len(rozmiar_nagl) != self.naglowek_size:
-            rozmiar_nagl = "0" + rozmiar_nagl
+        a=message
+        words=a.split()
+        if words[0]=="Client".encode('utf-8'):
+            self.can_move = True
+            print(message.decode('utf-8'))
+            self.historia.append(message.decode('utf-8'))
+            if words[2]=="Spawned".encode('utf-8'):
+                x=int(words[8].decode('utf-8')[:-1])
+                y=int(words[9].decode('utf-8'))
+                val=int(words[6].decode('utf-8')[:-1])
+                self.gracz_sieciowy.spawnTile(x,y,val)
+            if words[2]=="Move".encode('utf-8'):
+                if words[5]=="left_down".encode('utf-8'):
+                    self.moveaweb()
+                if words[5] == "left_up".encode('utf-8'):
+                    self.moveqweb()
+                if words[5]=="up".encode('utf-8'):
+                    self.movewweb()
+                if words[5]=="down".encode('utf-8'):
+                    self.movesweb()
+                if words[5]=="right_up".encode('utf-8'):
+                    self.moveeweb()
+                if words[5]=="right_down".encode('utf-8'):
+                    self.movedweb()
 
-        for client in self.clients:
-            client.send(rozmiar_nagl.encode('utf-8'))
-            client.send(message)
-        # obsluga wiadomosci i plikow
+        if words[0] == "Server".encode('utf-8'):
+            self.can_move=False
+            rozmiar_nagl = str(len(message))
+            while len(rozmiar_nagl) != self.naglowek_size:
+                rozmiar_nagl = "0" + rozmiar_nagl
+
+            for client in self.clients:
+                client.send(rozmiar_nagl.encode('utf-8'))
+                client.send(message)
+            # obsluga wiadomosci i plikow
 
     def handle(self, client):
         while True:
@@ -1012,19 +1063,19 @@ class MainWindow(QtWidgets.QGraphicsView):
             except:
                 break
 
-    def writeServ(self, mess):
-        # struktura wiadomosci, ktora wysylamy wszystkim
-        message = self.name + ' sends ' + mess
-        naglowek = len(message)
-        rozmiar_nagl = str(len(message))
-        while len(rozmiar_nagl) != self.naglowek_size:
-            rozmiar_nagl = "0" + rozmiar_nagl
-        try:
-            self.sock.send(rozmiar_nagl.encode('utf-8'))
-            self.sock.send(message)
-        except Exception as e:
-            print("Nie mogę wysłaćS")
-            print(e)
+    # def writeServ(self, mess):
+    #     # struktura wiadomosci, ktora wysylamy wszystkim
+    #     message = self.name + ' sends ' + mess
+    #     naglowek = len(message)
+    #     rozmiar_nagl = str(len(message))
+    #     while len(rozmiar_nagl) != self.naglowek_size:
+    #         rozmiar_nagl = "0" + rozmiar_nagl
+    #     try:
+    #         self.sock.send(rozmiar_nagl.encode('utf-8'))
+    #         self.sock.send(message)
+    #     except Exception as e:
+    #         print("Nie mogę wysłaćS")
+    #         print(e)
 
     # metoda odbierająca
     def receiveServ(self):
@@ -1036,6 +1087,9 @@ class MainWindow(QtWidgets.QGraphicsView):
             self.clients.append(client)
             # Powiadomienie do wszystkich o wejsciu nowej osoby
             self.broadcast("Somebody entered the chatroom!".encode('utf-8'))
+            for el in self.initialSpawn:
+                self.broadcast(("Server sends "+el).encode(encoding='utf-8'))
+
             # wiadomosc dla klienta ze sie połaczył
             # client.send('Connected!'.encode('utf-8'))
 
@@ -1283,210 +1337,215 @@ class MainWindow(QtWidgets.QGraphicsView):
     # metody poszczególnych ruchów - te same metody co w HexBoard
     # służace do obsługi przycisków
     def movea(self, xml=False):
-        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
+        if self.can_move==True:
+            replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
 
-        self.tic_tac_toe.moves(direction="left_down")
-        changed = self.tic_tac_toe.merge(direction="left_down")
-        while replays > 0 and changed == True:
             self.tic_tac_toe.moves(direction="left_down")
             changed = self.tic_tac_toe.merge(direction="left_down")
-            replays -= 1
+            while replays > 0 and changed == True:
+                self.tic_tac_toe.moves(direction="left_down")
+                changed = self.tic_tac_toe.merge(direction="left_down")
+                replays -= 1
 
-        printRed("Moved all tiles left_down")
-        self.historia.append("Move direction = left_down")
-        if self.role == "Client":
-            self.writeClient("Move direction = left_down")
-        if self.role == "Server":
-            self.broadcast("Move direction = left_down".encode(encoding='utf-8'))
-
-        printGreen("Score = " + str(self.tic_tac_toe.score))
-        self.historia.append("Score = " + str(self.tic_tac_toe.score))
-        self.labelScore.setText(str(self.tic_tac_toe.score))
-
-        self.tic_tac_toe.check_if_2048()
-        if xml == False:
-            spawn = self.tic_tac_toe.spawnTile()
+            printRed("Moved all tiles left_down")
+            self.historia.append("Move direction = left_down")
             if self.role == "Client":
-                self.writeClient(spawn)
+                self.writeClient("Move direction = left_down")
             if self.role == "Server":
-                self.broadcast(spawn.encode(encoding='utf-8'))
-            print(spawn)
-            self.historia.append(spawn)
-            if self.tic_tac_toe.win_condition == True:
-                self.messbox = MessageB(self, type="Wygrana")
-            if spawn == "Plansza pełna - przegrałeś grę!":
-                self.messbox = MessageB(self, type="Koniec Gry")
+                self.broadcast("Server sends Move direction = left_down".encode(encoding='utf-8'))
 
-    def moveq(self, xml=False):
-        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
-        self.tic_tac_toe.moves(direction="left_up")
-        changed = self.tic_tac_toe.merge(direction="left_up")
-        while replays > 0 and changed == True:
-            self.tic_tac_toe.moves(direction="left_up")
-            changed = self.tic_tac_toe.merge(direction="left_up")
-            replays -= 1
+            printGreen("Score = " + str(self.tic_tac_toe.score))
+            self.historia.append("Score = " + str(self.tic_tac_toe.score))
+            self.labelScore.setText(str(self.tic_tac_toe.score))
 
-        printRed("Moved all tiles left_up")
-        self.historia.append("Move direction = left_up")
-        if self.role == "Client":
-            self.writeClient("Move direction = left_up")
-        if self.role == "Server":
-            self.broadcast("Move direction = left_up".encode(encoding='utf-8'))
-
-        printGreen("Score = " + str(self.tic_tac_toe.score))
-        self.labelScore.setText(str(self.tic_tac_toe.score))
-        self.historia.append("Score = " + str(self.tic_tac_toe.score))
-
-        self.tic_tac_toe.check_if_2048()
-        if xml == False:
-            spawn = self.tic_tac_toe.spawnTile()
-            print(spawn)
-            if self.role == "Client":
-                self.writeClient(spawn)
-            if self.role == "Server":
-                self.broadcast(spawn.encode(encoding='utf-8'))
-            self.historia.append(spawn)
-            if self.tic_tac_toe.win_condition == True:
-                self.messbox = MessageB(self, type="Wygrana")
+            self.tic_tac_toe.check_if_2048()
+            if xml == False:
+                spawn = self.tic_tac_toe.spawnTile()
+                if self.role == "Client":
+                    self.writeClient(spawn)
+                if self.role == "Server":
+                    self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
+                print(spawn)
+                self.historia.append(spawn)
+                if self.tic_tac_toe.win_condition == True:
+                    self.messbox = MessageB(self, type="Wygrana")
                 if spawn == "Plansza pełna - przegrałeś grę!":
                     self.messbox = MessageB(self, type="Koniec Gry")
 
+    def moveq(self, xml=False):
+        if self.can_move==True:
+            replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
+            self.tic_tac_toe.moves(direction="left_up")
+            changed = self.tic_tac_toe.merge(direction="left_up")
+            while replays > 0 and changed == True:
+                self.tic_tac_toe.moves(direction="left_up")
+                changed = self.tic_tac_toe.merge(direction="left_up")
+                replays -= 1
+
+            printRed("Moved all tiles left_up")
+            self.historia.append("Move direction = left_up")
+            if self.role == "Client":
+                self.writeClient("Move direction = left_up")
+            if self.role == "Server":
+                self.broadcast("Server sends Move direction = left_up".encode(encoding='utf-8'))
+
+            printGreen("Score = " + str(self.tic_tac_toe.score))
+            self.labelScore.setText(str(self.tic_tac_toe.score))
+            self.historia.append("Score = " + str(self.tic_tac_toe.score))
+
+            self.tic_tac_toe.check_if_2048()
+            if xml == False:
+                spawn = self.tic_tac_toe.spawnTile()
+                print(spawn)
+                if self.role == "Client":
+                    self.writeClient(spawn)
+                if self.role == "Server":
+                    self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
+                self.historia.append(spawn)
+                if self.tic_tac_toe.win_condition == True:
+                    self.messbox = MessageB(self, type="Wygrana")
+                    if spawn == "Plansza pełna - przegrałeś grę!":
+                        self.messbox = MessageB(self, type="Koniec Gry")
+
     def movew(self, xml=False):
-        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
-        self.tic_tac_toe.moves(direction="up")
-        changed = self.tic_tac_toe.merge(direction="up")
-        while replays > 0 and changed == True:
+        if self.can_move==True:
+            replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
             self.tic_tac_toe.moves(direction="up")
             changed = self.tic_tac_toe.merge(direction="up")
-            replays -= 1
+            while replays > 0 and changed == True:
+                self.tic_tac_toe.moves(direction="up")
+                changed = self.tic_tac_toe.merge(direction="up")
+                replays -= 1
 
-        printRed("Moved all tiles up")
-        self.historia.append("Move direction = up")
-        if self.role == "Client":
-            self.writeClient("Move direction = up")
-        if self.role == "Server":
-            self.broadcast("Move direction = up".encode(encoding='utf-8'))
-
-        printGreen("Score = " + str(self.tic_tac_toe.score))
-        self.labelScore.setText(str(self.tic_tac_toe.score))
-        self.historia.append("Score = " + str(self.tic_tac_toe.score))
-
-        self.tic_tac_toe.check_if_2048()
-        if xml == False:
-            spawn = self.tic_tac_toe.spawnTile()
-            print(spawn)
+            printRed("Moved all tiles up")
+            self.historia.append("Move direction = up")
             if self.role == "Client":
-                self.writeClient(spawn)
+                self.writeClient("Move direction = up")
             if self.role == "Server":
-                self.broadcast(spawn.encode(encoding='utf-8'))
-            self.historia.append(spawn)
-            if self.tic_tac_toe.win_condition == True:
-                self.messbox = MessageB(self, type="Wygrana")
-            if spawn == "Plansza pełna - przegrałeś grę!":
-                self.messbox = MessageB(self, type="Koniec Gry")
+                self.broadcast("Server sends Move direction = up".encode(encoding='utf-8'))
+
+            printGreen("Score = " + str(self.tic_tac_toe.score))
+            self.labelScore.setText(str(self.tic_tac_toe.score))
+            self.historia.append("Score = " + str(self.tic_tac_toe.score))
+
+            self.tic_tac_toe.check_if_2048()
+            if xml == False:
+                spawn = self.tic_tac_toe.spawnTile()
+                print(spawn)
+                if self.role == "Client":
+                    self.writeClient(spawn)
+                if self.role == "Server":
+                    self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
+                self.historia.append(spawn)
+                if self.tic_tac_toe.win_condition == True:
+                    self.messbox = MessageB(self, type="Wygrana")
+                if spawn == "Plansza pełna - przegrałeś grę!":
+                    self.messbox = MessageB(self, type="Koniec Gry")
 
     def movee(self, xml=False):
-
-        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
-        self.tic_tac_toe.moves(direction="right_up")
-        changed = self.tic_tac_toe.merge(direction="right_up")
-        while replays > 0 and changed == True:
+        if self.can_move==True:
+            replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
             self.tic_tac_toe.moves(direction="right_up")
             changed = self.tic_tac_toe.merge(direction="right_up")
-            replays -= 1
+            while replays > 0 and changed == True:
+                self.tic_tac_toe.moves(direction="right_up")
+                changed = self.tic_tac_toe.merge(direction="right_up")
+                replays -= 1
 
-        printRed("Moved all tiles right_up")
-        self.historia.append("Move direction = right_up")
-        if self.role == "Client":
-            self.writeClient("Move direction = right_up")
-        if self.role == "Server":
-            self.broadcast("Move direction = right_up".encode(encoding='utf-8'))
-
-        printGreen("Score = " + str(self.tic_tac_toe.score))
-        self.labelScore.setText(str(self.tic_tac_toe.score))
-        self.historia.append("Score = " + str(self.tic_tac_toe.score))
-
-        self.tic_tac_toe.check_if_2048()
-        if xml == False:
-            spawn = self.tic_tac_toe.spawnTile()
-            print(spawn)
+            printRed("Moved all tiles right_up")
+            self.historia.append("Move direction = right_up")
             if self.role == "Client":
-                self.writeClient(spawn)
+                self.writeClient("Move direction = right_up")
             if self.role == "Server":
-                self.broadcast(spawn.encode(encoding='utf-8'))
-            self.historia.append(spawn)
-            if self.tic_tac_toe.win_condition == True:
-                self.messbox = MessageB(self, type="Wygrana")
-            if spawn == "Plansza pełna - przegrałeś grę!":
-                self.messbox = MessageB(self, type="Koniec Gry")
+                self.broadcast("Server sends Move direction = right_up".encode(encoding='utf-8'))
+
+            printGreen("Score = " + str(self.tic_tac_toe.score))
+            self.labelScore.setText(str(self.tic_tac_toe.score))
+            self.historia.append("Score = " + str(self.tic_tac_toe.score))
+
+            self.tic_tac_toe.check_if_2048()
+            if xml == False:
+                spawn = self.tic_tac_toe.spawnTile()
+                print(spawn)
+                if self.role == "Client":
+                    self.writeClient(spawn)
+                if self.role == "Server":
+                    self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
+                self.historia.append(spawn)
+                if self.tic_tac_toe.win_condition == True:
+                    self.messbox = MessageB(self, type="Wygrana")
+                if spawn == "Plansza pełna - przegrałeś grę!":
+                    self.messbox = MessageB(self, type="Koniec Gry")
 
     def moves(self, xml=False):
-        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
-        self.tic_tac_toe.moves(direction="down")
-        changed = self.tic_tac_toe.merge(direction="down")
-        while replays > 0 and changed == True:
+        if self.can_move==True:
+            replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
             self.tic_tac_toe.moves(direction="down")
             changed = self.tic_tac_toe.merge(direction="down")
-            replays -= 1
+            while replays > 0 and changed == True:
+                self.tic_tac_toe.moves(direction="down")
+                changed = self.tic_tac_toe.merge(direction="down")
+                replays -= 1
 
-        printRed("Moved all tiles down")
-        self.historia.append("Move direction = down")
-        if self.role == "Client":
-            self.writeClient("Move direction = down")
-        if self.role == "Server":
-            self.broadcast("Move direction = down".encode(encoding='utf-8'))
-
-        printGreen("Score = " + str(self.tic_tac_toe.score))
-        self.labelScore.setText(str(self.tic_tac_toe.score))
-        self.historia.append("Score = " + str(self.tic_tac_toe.score))
-
-        self.tic_tac_toe.check_if_2048()
-        if xml == False:
-            spawn = self.tic_tac_toe.spawnTile()
-            print(spawn)
+            printRed("Moved all tiles down")
+            self.historia.append("Move direction = down")
             if self.role == "Client":
-                self.writeClient(spawn)
+                self.writeClient("Move direction = down")
             if self.role == "Server":
-                self.broadcast(spawn.encode(encoding='utf-8'))
-            self.historia.append(spawn)
-            if self.tic_tac_toe.win_condition == True:
-                self.messbox = MessageB(self, type="Wygrana")
-            if spawn == "Plansza pełna - przegrałeś grę!":
-                self.messbox = MessageB(self, type="Koniec Gry")
+                self.broadcast("Server sends Move direction = down".encode(encoding='utf-8'))
+
+            printGreen("Score = " + str(self.tic_tac_toe.score))
+            self.labelScore.setText(str(self.tic_tac_toe.score))
+            self.historia.append("Score = " + str(self.tic_tac_toe.score))
+
+            self.tic_tac_toe.check_if_2048()
+            if xml == False:
+                spawn = self.tic_tac_toe.spawnTile()
+                print(spawn)
+                if self.role == "Client":
+                    self.writeClient(spawn)
+                if self.role == "Server":
+                    self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
+                self.historia.append(spawn)
+                if self.tic_tac_toe.win_condition == True:
+                    self.messbox = MessageB(self, type="Wygrana")
+                if spawn == "Plansza pełna - przegrałeś grę!":
+                    self.messbox = MessageB(self, type="Koniec Gry")
 
     def moved(self, xml=False):
-        replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
-        self.tic_tac_toe.moves(direction="right_down")
-        changed = self.tic_tac_toe.merge(direction="right_down")
-        while replays > 0 and changed == True:
+        if self.can_move==True:
+            replays = self.tic_tac_toe.size - self.tic_tac_toe.size // 2
             self.tic_tac_toe.moves(direction="right_down")
             changed = self.tic_tac_toe.merge(direction="right_down")
-            replays -= 1
+            while replays > 0 and changed == True:
+                self.tic_tac_toe.moves(direction="right_down")
+                changed = self.tic_tac_toe.merge(direction="right_down")
+                replays -= 1
 
-        printRed("Moved all tiles right_down")
-        self.historia.append("Move direction = right_down")
-        if self.role == "Client":
-            self.writeClient("Move direction = right_down")
-        if self.role == "Server":
-            self.broadcast("Move direction = right_down".encode(encoding='utf-8'))
-
-        printGreen("Score = " + str(self.tic_tac_toe.score))
-        self.labelScore.setText(str(self.tic_tac_toe.score))
-        self.historia.append("Score = " + str(self.tic_tac_toe.score))
-
-        self.tic_tac_toe.check_if_2048()
-        if xml == False:
-            spawn = self.tic_tac_toe.spawnTile()
-            print(spawn)
+            printRed("Moved all tiles right_down")
+            self.historia.append("Move direction = right_down")
             if self.role == "Client":
-                self.writeClient(spawn)
+                self.writeClient("Move direction = right_down")
             if self.role == "Server":
-                self.broadcast(spawn.encode(encoding='utf-8'))
-            self.historia.append(spawn)
-            if self.tic_tac_toe.win_condition == True:
-                self.messbox = MessageB(self, type="Wygrana")
-            if spawn == "Plansza pełna - przegrałeś grę!":
-                self.messbox = MessageB(self, type="Koniec Gry")
+                self.broadcast("Server sends Move direction = right_down".encode(encoding='utf-8'))
+
+            printGreen("Score = " + str(self.tic_tac_toe.score))
+            self.labelScore.setText(str(self.tic_tac_toe.score))
+            self.historia.append("Score = " + str(self.tic_tac_toe.score))
+
+            self.tic_tac_toe.check_if_2048()
+            if xml == False:
+                spawn = self.tic_tac_toe.spawnTile()
+                print(spawn)
+                if self.role == "Client":
+                    self.writeClient(spawn)
+                if self.role == "Server":
+                    self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
+                self.historia.append(spawn)
+                if self.tic_tac_toe.win_condition == True:
+                    self.messbox = MessageB(self, type="Wygrana")
+                if spawn == "Plansza pełna - przegrałeś grę!":
+                    self.messbox = MessageB(self, type="Koniec Gry")
 
     # wykrycie kliknięcia na obszarze planszy pierwszego gracza
     def mousePressEvent(self, event):
@@ -1525,7 +1584,98 @@ class MainWindow(QtWidgets.QGraphicsView):
         self.mouse_pressed = False
 
 
+
+
+   # metody poszczególnych ruchów - te same metody co w HexBoard
+    # służace do obsługi przycisków
+    def moveaweb(self, xml=False):
+        replays = self.gracz_sieciowy.size - self.gracz_sieciowy.size // 2
+
+        self.gracz_sieciowy.moves(direction="left_down")
+        changed = self.gracz_sieciowy.merge(direction="left_down")
+        while replays > 0 and changed == True:
+            self.gracz_sieciowy.moves(direction="left_down")
+            changed = self.gracz_sieciowy.merge(direction="left_down")
+            replays -= 1
+
+        self.labelWebScore.setText(str(self.gracz_sieciowy.score))
+
+
+    def moveqweb(self, xml=False):
+        replays = self.gracz_sieciowy.size - self.gracz_sieciowy.size // 2
+        self.gracz_sieciowy.moves(direction="left_up")
+        changed = self.gracz_sieciowy.merge(direction="left_up")
+        while replays > 0 and changed == True:
+            self.gracz_sieciowy.moves(direction="left_up")
+            changed = self.gracz_sieciowy.merge(direction="left_up")
+            replays -= 1
+
+
+        self.labelWebScore.setText(str(self.gracz_sieciowy.score))
+        # self.historia.append("Score = " + str(self.tic_tac_toe.score))
+
+        # self.gracz_sieciowy.check_if_2048()
+        # if xml == False:
+        #     spawn = self.tic_tac_toe.spawnTile()
+        #     print(spawn)
+        #     if self.role == "Client":
+        #         self.writeClient(spawn)
+        #     if self.role == "Server":
+        #         self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
+        #     self.historia.append(spawn)
+        #     if self.gracz_sieciowy.win_condition == True:
+        #         self.messbox = MessageB(self, type="Wygrana")
+        #         if spawn == "Plansza pełna - przegrałeś grę!":
+        #             self.messbox = MessageB(self, type="Koniec Gry")
+
+    def movewweb(self, xml=False):
+        replays = self.gracz_sieciowy.size - self.gracz_sieciowy.size // 2
+        self.gracz_sieciowy.moves(direction="up")
+        changed = self.gracz_sieciowy.merge(direction="up")
+        while replays > 0 and changed == True:
+            self.gracz_sieciowy.moves(direction="up")
+            changed = self.gracz_sieciowy.merge(direction="up")
+            replays -= 1
+
+        self.labelWebScore.setText(str(self.gracz_sieciowy.score))
+
+    def moveeweb(self, xml=False):
+
+        replays = self.gracz_sieciowy.size - self.gracz_sieciowy.size // 2
+        self.gracz_sieciowy.moves(direction="right_up")
+        changed = self.gracz_sieciowy.merge(direction="right_up")
+        while replays > 0 and changed == True:
+            self.gracz_sieciowy.moves(direction="right_up")
+            changed = self.gracz_sieciowy.merge(direction="right_up")
+            replays -= 1
+
+        self.labelWebScore.setText(str(self.gracz_sieciowy.score))
+
+    def movesweb(self, xml=False):
+        replays = self.gracz_sieciowy.size - self.gracz_sieciowy.size // 2
+        self.gracz_sieciowy.moves(direction="down")
+        changed = self.gracz_sieciowy.merge(direction="down")
+        while replays > 0 and changed == True:
+            self.gracz_sieciowy.moves(direction="down")
+            changed = self.gracz_sieciowy.merge(direction="down")
+            replays -= 1
+
+        self.labelWebScore.setText(str(self.gracz_sieciowy.score))
+
+    def movedweb(self, xml=False):
+        replays = self.gracz_sieciowy.size - self.gracz_sieciowy.size // 2
+        self.gracz_sieciowy.moves(direction="right_down")
+        changed = self.gracz_sieciowy.merge(direction="right_down")
+        while replays > 0 and changed == True:
+            self.gracz_sieciowy.moves(direction="right_down")
+            changed = self.gracz_sieciowy.merge(direction="right_down")
+            replays -= 1
+
+        self.labelWebScore.setText(str(self.gracz_sieciowy.score))
+
 if __name__ == "__main__":
+
+    
     app = QtWidgets.QApplication([])
 
     window = MainWindow()
