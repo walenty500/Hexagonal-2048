@@ -1,7 +1,17 @@
 # Krzysztof Walentukiewicz
 # 175478
 # Hex 2048
-# zrobiono wszystkie podpunkty oprócz zasobów qrc(-1pkt)
+
+# wykonane podpunkty:
+# blokada ruchu dla gry 2 osobowej
+# komunikaty w konsoli
+# działająca gra 2osobowa
+
+# aby odpalić grę 2osobowa nalezy odpalic skrypt bashowy
+# bash run.sh
+
+# albo w dwoch konsolach odpalic plik 175478_Walentukiewicz_Krzysztof
+# wtedy czytelnosc konsoli bedzie lepsza
 
 import sys
 import random
@@ -13,6 +23,8 @@ import os
 import json
 import socket
 import threading
+import argparse
+import subprocess
 
 
 # funkcja wypisująca tekst w konsoli na czerwono
@@ -1046,10 +1058,16 @@ class MainWindow(QtWidgets.QGraphicsView):
             while len(rozmiar_nagl) != self.naglowek_size:
                 rozmiar_nagl = "0" + rozmiar_nagl
 
-            for client in self.clients:
-                client.send(rozmiar_nagl.encode('utf-8'))
-                client.send(message)
-            # obsluga wiadomosci i plikow
+        if len(self.clients)==0:
+            self.can_move=True
+
+        for client in self.clients:
+            rozmiar_nagl = str(len(message))
+            while len(rozmiar_nagl) != self.naglowek_size:
+                rozmiar_nagl = "0" + rozmiar_nagl
+            client.send(rozmiar_nagl.encode('utf-8'))
+            client.send(message)
+        # obsluga wiadomosci i plikow
 
     def handle(self, client):
         while True:
@@ -1062,20 +1080,6 @@ class MainWindow(QtWidgets.QGraphicsView):
                 self.broadcast(message)
             except:
                 break
-
-    # def writeServ(self, mess):
-    #     # struktura wiadomosci, ktora wysylamy wszystkim
-    #     message = self.name + ' sends ' + mess
-    #     naglowek = len(message)
-    #     rozmiar_nagl = str(len(message))
-    #     while len(rozmiar_nagl) != self.naglowek_size:
-    #         rozmiar_nagl = "0" + rozmiar_nagl
-    #     try:
-    #         self.sock.send(rozmiar_nagl.encode('utf-8'))
-    #         self.sock.send(message)
-    #     except Exception as e:
-    #         print("Nie mogę wysłaćS")
-    #         print(e)
 
     # metoda odbierająca
     def receiveServ(self):
@@ -1587,7 +1591,7 @@ class MainWindow(QtWidgets.QGraphicsView):
 
 
    # metody poszczególnych ruchów - te same metody co w HexBoard
-    # służace do obsługi przycisków
+    # służace do obsługi gracza sieciowego
     def moveaweb(self, xml=False):
         replays = self.gracz_sieciowy.size - self.gracz_sieciowy.size // 2
 
@@ -1612,21 +1616,7 @@ class MainWindow(QtWidgets.QGraphicsView):
 
 
         self.labelWebScore.setText(str(self.gracz_sieciowy.score))
-        # self.historia.append("Score = " + str(self.tic_tac_toe.score))
 
-        # self.gracz_sieciowy.check_if_2048()
-        # if xml == False:
-        #     spawn = self.tic_tac_toe.spawnTile()
-        #     print(spawn)
-        #     if self.role == "Client":
-        #         self.writeClient(spawn)
-        #     if self.role == "Server":
-        #         self.broadcast(("Server sends "+spawn).encode(encoding='utf-8'))
-        #     self.historia.append(spawn)
-        #     if self.gracz_sieciowy.win_condition == True:
-        #         self.messbox = MessageB(self, type="Wygrana")
-        #         if spawn == "Plansza pełna - przegrałeś grę!":
-        #             self.messbox = MessageB(self, type="Koniec Gry")
 
     def movewweb(self, xml=False):
         replays = self.gracz_sieciowy.size - self.gracz_sieciowy.size // 2
@@ -1675,7 +1665,6 @@ class MainWindow(QtWidgets.QGraphicsView):
 
 if __name__ == "__main__":
 
-    
     app = QtWidgets.QApplication([])
 
     window = MainWindow()
