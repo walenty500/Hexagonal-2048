@@ -1,6 +1,6 @@
 # Hexagonal 2048 Game
 
-##This is a project I created as my assignment. It's created fully in Python, using mainly Pyside2 module.
+## This is a project I created as my assignment. It's created fully in Python, using mainly Pyside2 module.
 
 The game is based on a popular phone game called 2048, where you swipe to add rectangular tiles on 4x4 grid in order to get to a tile with a 2048 on it.
 
